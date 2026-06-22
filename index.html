@@ -76,7 +76,7 @@ class App extends React.Component {
       payments: sv ? sv.payments : sd.payments,
       offset: 0, tab: 'mes', hl: 'lista', cl: 'mes',
       sheet: false, editing: false, form: this.blank('pay'),
-      dayOpen: false, daySel: null, payOpen: false, pp: null
+      dayOpen: false, daySel: null, payOpen: false, pp: null, dataOpen: false
     };
   }
   blank(t){ return {id:null,type:t,name:'',category:'outros',amount:'',dueDay:'',recurring:true,variable:false,installment:false,installmentTotal:'12',installmentCurrent:'1'}; }
@@ -354,6 +354,62 @@ class App extends React.Component {
     );
   }
 
+  exportData(){
+    const data = {version:3, exportedAt:new Date().toISOString(), bills:this.state.bills, payments:this.state.payments};
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'contas-backup.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 500);
+  }
+  importData(e){
+    const file = e && e.target && e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        const bills = Array.isArray(data.bills) ? data.bills : [];
+        const payments = data.payments && typeof data.payments === 'object' ? data.payments : {};
+        this.setState({bills, payments, dataOpen:false}, ()=>this.save());
+      } catch(err) { alert('Não foi possível importar este arquivo.'); }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+  dataEl(){
+    const item = (icon,title,sub,onClick,primary) => h('button',{onClick,style:{width:'100%',border:'none',background:primary?SAGEBG:'#fff',borderRadius:16,padding:'18px 18px',display:'flex',alignItems:'center',gap:16,textAlign:'left',cursor:'pointer',marginBottom:12}},
+      h('div',{style:{width:42,height:42,borderRadius:13,background:primary?'rgba(158,192,0,.12)':PANEL,color:SAGE,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:600,flex:'none'}}, icon),
+      h('div',{style:{flex:1,minWidth:0}},
+        h('div',{style:{fontSize:17,fontWeight:700,color:TEXT,marginBottom:3}}, title),
+        h('div',{style:{fontSize:14.5,fontWeight:500,color:SUB,lineHeight:1.35}}, sub)
+      ),
+      h('div',{style:{fontSize:28,color:TEXT,lineHeight:1,flex:'none'}}, '›')
+    );
+    return h('div',{style:{position:'absolute',inset:0,zIndex:34,display:'flex',flexDirection:'column',justifyContent:'flex-end'}},
+      h('div',{onClick:()=>this.setState({dataOpen:false}),style:{position:'absolute',inset:0,background:'rgba(44,42,37,.32)',animation:'fadeIn .2s ease'}}),
+      h('div',{className:'scroll',style:{position:'relative',background:BG,borderTopLeftRadius:26,borderTopRightRadius:26,maxHeight:'84%',overflowY:'auto',padding:'10px 22px calc(26px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
+        h('div',{style:{width:40,height:5,borderRadius:3,background:LINE,margin:'6px auto 20px'}}),
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}},
+          h('div',null,
+            h('h2',{style:{margin:0,fontWeight:700,fontSize:26,letterSpacing:'-.02em',color:TEXT}}, 'Dados'),
+            h('p',{style:{margin:'10px 0 0',fontSize:15.5,fontWeight:500,color:SUB,lineHeight:1.35}}, 'Exporte para fazer backup ou importe para restaurar suas contas e pagamentos.')
+          ),
+          this.iconBtn('✕', ()=>this.setState({dataOpen:false}))
+        ),
+        h('div',{style:{height:14}}),
+        item('↥','Exportar dados','Gerar arquivo com todas as suas contas e pagamentos.',()=>this.exportData(),true),
+        item('↧','Importar dados','Selecionar arquivo para restaurar suas contas e pagamentos.',()=>document.getElementById('dataImport').click(),false),
+        h('input',{id:'dataImport',type:'file',accept:'application/json,.json',style:{display:'none'},onChange:e=>this.importData(e)}),
+        h('div',{style:{display:'flex',gap:10,alignItems:'flex-start',marginTop:20,color:SUB}},
+          h('div',{style:{fontSize:20,lineHeight:1}}, '▣'),
+          h('div',{style:{fontSize:13.5,fontWeight:500,lineHeight:1.35}}, 'Seus dados continuam armazenados apenas no seu dispositivo. O arquivo exportado serve como backup manual.')
+        )
+      )
+    );
+  }
+
   payEl(){
     const pp=this.state.pp; if(!pp) return null;
     const LBL={display:'block',fontSize:13,fontWeight:600,color:SUB,marginBottom:7};
@@ -373,7 +429,7 @@ class App extends React.Component {
   }
 
   render(){
-    const {tab,sheet,dayOpen,payOpen}=this.state;
+    const {tab,sheet,dayOpen,payOpen,dataOpen}=this.state;
     const key=this.vk(), parts=key.split('-').map(Number), yy=parts[0], mm=parts[1];
     let body;
     if(tab==='mes') body=this.tabMes(key);
@@ -384,21 +440,22 @@ class App extends React.Component {
       h('header',{style:{padding:'calc(16px + env(safe-area-inset-top)) 22px 14px',flex:'none',background:BG}},
         h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
           h('div',{style:{display:'flex',gap:10}}, this.iconBtn('‹', ()=>this.setState({offset:this.state.offset-1})), this.iconBtn('›', ()=>this.setState({offset:this.state.offset+1}))),
-          key!==CUR && h('button',{onClick:()=>this.setState({offset:0}), style:{padding:'9px 16px',border:'none',background:SAGEBG,color:SAGE,borderRadius:18,fontSize:13,fontWeight:600,cursor:'pointer'}}, 'Hoje')
+          key===CUR ? this.iconBtn('⇅', ()=>this.setState({dataOpen:true})) : h('button',{onClick:()=>this.setState({offset:0}), style:{padding:'9px 16px',border:'none',background:SAGEBG,color:SAGE,borderRadius:18,fontSize:13,fontWeight:600,cursor:'pointer'}}, 'Hoje')
         ),
         h('div',{style:{display:'flex',alignItems:'baseline',gap:9}},
           h('h1',{style:{margin:0,fontWeight:600,fontSize:25,letterSpacing:'-.01em',color:TEXT}}, MONTHS[mm-1]),
           h('span',{style:{fontSize:16,fontWeight:500,color:MUTE}}, yy)
         )
       ),
-      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 22px 76px'}}, body),
-      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:22,bottom:62,width:58,height:58,borderRadius:'50%',border:'none',background:SAGE,color:'#fff',fontSize:30,fontWeight:400,cursor:'pointer',zIndex:8,boxShadow:'0 10px 26px -8px rgba(158,192,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
-      h('nav',{style:{flex:'none',background:BG,borderTop:'1px solid '+FAINT,display:'flex',alignItems:'center',justifyContent:'center',gap:44,padding:'15px 8px 6px'}},
+      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 22px calc(72px + env(safe-area-inset-bottom))'}}, body),
+      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:22,bottom:'calc(62px + env(safe-area-inset-bottom))',width:58,height:58,borderRadius:'50%',border:'none',background:SAGE,color:'#fff',fontSize:30,fontWeight:400,cursor:'pointer',zIndex:8,boxShadow:'0 10px 26px -8px rgba(158,192,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
+      h('nav',{style:{flex:'none',background:BG,borderTop:'1px solid '+FAINT,display:'flex',alignItems:'center',justifyContent:'center',gap:44,padding:'8px 8px calc(8px + env(safe-area-inset-bottom))'}},
         this.navItem('mes','Mês'), this.navItem('cal','Agenda'), this.navItem('receber','Receber')
       ),
       sheet && this.sheetEl(),
       dayOpen && this.dayEl(key),
-      payOpen && this.payEl()
+      payOpen && this.payEl(),
+      dataOpen && this.dataEl()
     );
   }
 }
