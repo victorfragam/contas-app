@@ -53,7 +53,7 @@ const CATKEYS = Object.keys(CATS);
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const WDH = ['seg','ter','qua','qui','sex','sáb','dom'];
 const WD = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const STORE = 'contasApp.v2';
+const STORE = 'contasApp.v3';
 const TODAY = {y:2026, m:6, d:22};
 const CUR = '2026-06';
 
@@ -67,26 +67,7 @@ const parseAmt = s => {
 const mIdx = k => { if(!k) return 0; const p = k.split('-').map(Number); return p[0]*12 + (p[1]-1); };
 const kFromI = i => Math.floor(i/12) + '-' + String((i%12)+1).padStart(2,'0');
 
-const seed = () => ({
-  bills: [
-    {id:'b1',name:'Aluguel',category:'moradia',amount:1800,dueDay:5,recurring:true,variable:false,type:'pay'},
-    {id:'b2',name:'Condomínio',category:'moradia',amount:650,dueDay:10,recurring:true,variable:true,type:'pay'},
-    {id:'b3',name:'Energia',category:'utilidades',amount:180,dueDay:12,recurring:true,variable:true,type:'pay'},
-    {id:'b4',name:'Água',category:'utilidades',amount:90,dueDay:15,recurring:true,variable:true,type:'pay'},
-    {id:'b5',name:'Cartão Nubank',category:'cartao',amount:2300,dueDay:18,recurring:true,variable:true,type:'pay'},
-    {id:'b6',name:'Internet',category:'internet',amount:120,dueDay:25,recurring:true,variable:false,type:'pay'},
-    {id:'b7',name:'Netflix',category:'streaming',amount:55,dueDay:24,recurring:true,variable:false,type:'pay'},
-    {id:'b8',name:'Celular',category:'telefone',amount:60,dueDay:28,recurring:true,variable:false,type:'pay'},
-    {id:'b9',name:'Academia',category:'saude',amount:110,dueDay:8,recurring:true,variable:false,type:'pay'},
-    {id:'b10',name:'Celular Samsung',category:'cartao',amount:350,dueDay:20,recurring:false,variable:false,installment:true,installmentTotal:12,startMonth:'2026-04',type:'pay'},
-    {id:'r1',name:'Salário',category:'outros',amount:6500,dueDay:5,recurring:true,variable:false,type:'receive'},
-    {id:'r2',name:'Freela',category:'outros',amount:1200,dueDay:26,recurring:false,variable:false,month:'2026-06',type:'receive'}
-  ],
-  payments: {
-    'b1:2026-06':{paid:true,amount:1800}, 'b2:2026-06':{paid:true,amount:672},
-    'b9:2026-06':{paid:true,amount:110}, 'r1:2026-06':{paid:true,amount:6500}
-  }
-});
+const seed = () => ({ bills: [], payments: {} });
 
 const load = () => { try { const r = localStorage.getItem(STORE); if (r) return JSON.parse(r); } catch(e){} return null; };
 const persist = s => { try { localStorage.setItem(STORE, JSON.stringify({bills:s.bills, payments:s.payments})); } catch(e){} };
@@ -220,7 +201,12 @@ class App extends React.Component {
         h('span',{style:{...SI(11),color:INK}}, pct+'%')
       ),
       h('div',{style:{marginBottom:16}}, this.seg([{v:'lista',l:'Lista'},{v:'status',l:'Por status'}], this.state.hl, v=>this.setState({hl:v}))),
-      this.state.hl==='lista'
+      rows.length===0
+        ? h('div',{style:{textAlign:'center',padding:'48px 20px',border:'2px dashed rgba(20,20,15,.2)',borderRadius:16}},
+            h('div',{style:{fontFamily:ARCH,fontWeight:800,fontSize:20,color:INK,marginBottom:6}}, 'Nenhuma conta'),
+            h('div',{style:{fontSize:14,color:INK,opacity:.55}}, 'Toque no + para cadastrar sua primeira conta')
+          )
+        : this.state.hl==='lista'
         ? h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, rows.map(r=>this.card(r,key)))
         : h('div',{style:{display:'flex',flexDirection:'column',gap:18}}, groups.map(g=>
             h('div',{key:g.k},
@@ -407,7 +393,7 @@ class App extends React.Component {
 
     return h('div',{style:{position:'relative',height:'100dvh',width:'100%',maxWidth:520,margin:'0 auto',background:PAPER,display:'flex',flexDirection:'column',overflow:'hidden'}},
       h('header',{style:{padding:'calc(14px + env(safe-area-inset-top)) 20px 10px',flex:'none',background:PAPER}},
-        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}},
           h('div',{style:{display:'flex',gap:8}}, this.iconBtn('‹', ()=>this.setState({offset:this.state.offset-1})), this.iconBtn('›', ()=>this.setState({offset:this.state.offset+1}))),
           key!==CUR && h('button',{onClick:()=>this.setState({offset:0}), style:{padding:'8px 15px',border:'2px solid '+INK,background:INK,color:PAPER,borderRadius:10,...SI(11),letterSpacing:'.06em',textTransform:'uppercase',cursor:'pointer'}}, 'Hoje')
         ),
@@ -418,7 +404,7 @@ class App extends React.Component {
       ),
       h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 20px calc(108px + env(safe-area-inset-bottom))'}}, body),
       h('button',{onClick:()=>this.add(), style:{position:'absolute',right:20,bottom:'calc(98px + env(safe-area-inset-bottom))',width:60,height:60,borderRadius:19,border:'2px solid '+INK,background:GREEN,color:'#fff',fontSize:32,fontWeight:700,cursor:'pointer',zIndex:8,boxShadow:'0 8px 22px -6px rgba(20,20,15,.5)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
-      h('nav',{style:{flex:'none',background:PAPER,borderTop:'2px solid '+INK,display:'flex',padding:'0 8px calc(14px + env(safe-area-inset-bottom))',paddingTop:0,height:'calc(78px + env(safe-area-inset-bottom))'}},
+      h('nav',{style:{flex:'none',background:PAPER,borderTop:'2px solid '+INK,display:'flex',alignItems:'flex-start',padding:'8px 8px calc(10px + env(safe-area-inset-bottom))',height:'calc(60px + env(safe-area-inset-bottom))'}},
         this.navItem('mes','Mês'), this.navItem('cal','Agenda'), this.navItem('receber','Receber')
       ),
       sheet && this.sheetEl(),
