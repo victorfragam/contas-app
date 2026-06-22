@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contas">
+<meta name="theme-color" content="#F4F1E9">
+<title>Contas</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;width:100%;overflow:hidden;overscroll-behavior:none}
+body{background:#F4F1E9;font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#14140F}
+#root{height:100dvh;width:100vw;display:flex;flex-direction:column}
+button{font-family:inherit}
+input,select{font-family:inherit;font-size:16px}
+::-webkit-scrollbar{width:0;height:0}
+.scroll{-webkit-overflow-scrolling:touch}
+@keyframes sheetUp{from{transform:translateY(101%)}to{transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+const React = window.React, ReactDOM = window.ReactDOM, h = React.createElement;
+
+const INK = '#14140F', PAPER = '#F4F1E9', CARD = '#FFFFFF';
+const RED = '#E0492F', AMBER = '#E0922F', GREEN = '#1FA85F', BLUE = '#2E8FC9';
+const MONO = "'Space Mono',monospace", ARCH = "'Archivo',sans-serif";
+
+const CATS = {
+  moradia:    {label:'Moradia',    tint:'#F1E9D4', ink:'#8A6A1E'},
+  utilidades: {label:'Utilidades', tint:'#DCECF6', ink:'#2D6E92'},
+  internet:   {label:'Internet',   tint:'#E4E7FB', ink:'#3B4FA8'},
+  cartao:     {label:'Cartão',     tint:'#F7E2E0', ink:'#B0413A'},
+  telefone:   {label:'Telefone',   tint:'#EAE3F7', ink:'#6A4DA8'},
+  streaming:  {label:'Streaming',  tint:'#F7EAD7', ink:'#A86A1E'},
+  saude:      {label:'Saúde',      tint:'#DEF1E4', ink:'#2C8350'},
+  outros:     {label:'Outros',     tint:'#ECECE6', ink:'#55554E'}
+};
+const CATKEYS = Object.keys(CATS);
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const WDH = ['seg','ter','qua','qui','sex','sáb','dom'];
+const WD = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const STORE = 'contasApp.v2';
+const TODAY = {y:2026, m:6, d:22};
+const CUR = '2026-06';
+
+const brl = n => 'R$ ' + (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const parseAmt = s => {
+  if (typeof s === 'number') return s;
+  s = String(s||'').trim().replace(/\s/g,'');
+  if (s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(s); return isNaN(n) ? 0 : n;
+};
+const mIdx = k => { if(!k) return 0; const p = k.split('-').map(Number); return p[0]*12 + (p[1]-1); };
+const kFromI = i => Math.floor(i/12) + '-' + String((i%12)+1).padStart(2,'0');
+
+const seed = () => ({
+  bills: [
+    {id:'b1',name:'Aluguel',category:'moradia',amount:1800,dueDay:5,recurring:true,variable:false,type:'pay'},
+    {id:'b2',name:'Condomínio',category:'moradia',amount:650,dueDay:10,recurring:true,variable:true,type:'pay'},
+    {id:'b3',name:'Energia',category:'utilidades',amount:180,dueDay:12,recurring:true,variable:true,type:'pay'},
+    {id:'b4',name:'Água',category:'utilidades',amount:90,dueDay:15,recurring:true,variable:true,type:'pay'},
+    {id:'b5',name:'Cartão Nubank',category:'cartao',amount:2300,dueDay:18,recurring:true,variable:true,type:'pay'},
+    {id:'b6',name:'Internet',category:'internet',amount:120,dueDay:25,recurring:true,variable:false,type:'pay'},
+    {id:'b7',name:'Netflix',category:'streaming',amount:55,dueDay:24,recurring:true,variable:false,type:'pay'},
+    {id:'b8',name:'Celular',category:'telefone',amount:60,dueDay:28,recurring:true,variable:false,type:'pay'},
+    {id:'b9',name:'Academia',category:'saude',amount:110,dueDay:8,recurring:true,variable:false,type:'pay'},
+    {id:'b10',name:'Celular Samsung',category:'cartao',amount:350,dueDay:20,recurring:false,variable:false,installment:true,installmentTotal:12,startMonth:'2026-04',type:'pay'},
+    {id:'r1',name:'Salário',category:'outros',amount:6500,dueDay:5,recurring:true,variable:false,type:'receive'},
+    {id:'r2',name:'Freela',category:'outros',amount:1200,dueDay:26,recurring:false,variable:false,month:'2026-06',type:'receive'}
+  ],
+  payments: {
+    'b1:2026-06':{paid:true,amount:1800}, 'b2:2026-06':{paid:true,amount:672},
+    'b9:2026-06':{paid:true,amount:110}, 'r1:2026-06':{paid:true,amount:6500}
+  }
+});
+
+const load = () => { try { const r = localStorage.getItem(STORE); if (r) return JSON.parse(r); } catch(e){} return null; };
+const persist = s => { try { localStorage.setItem(STORE, JSON.stringify({bills:s.bills, payments:s.payments})); } catch(e){} };
+
+const SI = (sz) => ({fontFamily:MONO, fontWeight:700, fontSize:sz});
+
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    const sv = load(), sd = seed();
+    this.state = {
+      bills: sv ? sv.bills : sd.bills,
+      payments: sv ? sv.payments : sd.payments,
+      offset: 0, tab: 'mes', hl: 'lista', cl: 'mes',
+      sheet: false, editing: false, form: this.blank('pay'),
+      dayOpen: false, daySel: null, payOpen: false, pp: null
+    };
+  }
+  blank(t){ return {id:null,type:t,name:'',category:'utilidades',amount:'',dueDay:'',recurring:true,variable:false,installment:false,installmentTotal:'12',installmentCurrent:'1'}; }
+  save(){ persist(this.state); }
+
+  vk(){ const i=(TODAY.m-1)+this.state.offset, y=TODAY.y+Math.floor(i/12), m=((i%12)+12)%12; return y+'-'+String(m+1).padStart(2,'0'); }
+  inst(key,type){
+    return this.state.bills.filter(b => {
+      if (b.type !== type) return false;
+      if (b.recurring) return true;
+      if (b.installment){ const n = mIdx(key) - mIdx(b.startMonth||key); return n>=0 && n<(b.installmentTotal||1); }
+      return b.month === key;
+    });
+  }
+  eff(b,key){ const p=this.state.payments[b.id+':'+key]; if(p&&p.paid&&p.amount!=null) return Number(p.amount); return Number(b.amount)||0; }
+  sta(b,key){
+    const p=this.state.payments[b.id+':'+key], paid=!!(p&&p.paid), rec=b.type==='receive';
+    if(paid) return {k:'pago',color:GREEN,label:rec?'Recebido':'Pago'};
+    if(key<CUR) return {k:'atrasado',color:RED,label:'Atrasado'};
+    if(key===CUR && b.dueDay<TODAY.d) return {k:'atrasado',color:RED,label:'Atrasado'};
+    if(key===CUR){ const d=b.dueDay-TODAY.d; if(d<=3) return {k:'breve',color:AMBER,label:d===0?(rec?'Hoje':'Vence hoje'):((rec?'Em ':'Vence ')+(d)+'d')}; }
+    return {k:'avencer',color:INK,label:rec?'A receber':'A vencer'};
+  }
+  row(b,key){
+    const cat=CATS[b.category]||CATS.outros, st=this.sta(b,key);
+    const paid=st.k==='pago', ef=this.eff(b,key), est=b.variable&&!paid;
+    let inst=''; if(b.installment){ const n=mIdx(key)-mIdx(b.startMonth||key)+1; inst=n+'/'+(b.installmentTotal||'?'); }
+    return {id:b.id, bill:b, name:b.name, cat, inst, paid, st, dueDay:b.dueDay, amt:(est?'~ ':'')+brl(est?b.amount:ef)};
+  }
+  toggle(b,key,e){
+    if(e) e.stopPropagation();
+    const k=b.id+':'+key, p=this.state.payments[k];
+    if(p&&p.paid){ const np={...this.state.payments}; delete np[k]; this.setState({payments:np}, ()=>this.save()); return; }
+    if(b.variable){ this.setState({payOpen:true, pp:{id:b.id, key, name:b.name, value:String(b.amount).replace('.',',')}}); return; }
+    this.pay(b.id, key, Number(b.amount)||0);
+  }
+  pay(id,key,amount){ this.setState({payments:{...this.state.payments,[id+':'+key]:{paid:true,amount}}}, ()=>this.save()); }
+  edit(b){
+    const cur = b.installment ? String(mIdx(this.vk())-mIdx(b.startMonth||this.vk())+1) : '1';
+    this.setState({sheet:true, editing:true, form:{id:b.id,type:b.type,name:b.name,category:b.category,amount:String(b.amount).replace('.',','),dueDay:String(b.dueDay),recurring:!!b.recurring,variable:!!b.variable,installment:!!b.installment,installmentTotal:String(b.installmentTotal||'12'),installmentCurrent:cur}});
+  }
+  add(){ const t=this.state.tab==='receber'?'receive':'pay'; this.setState({sheet:true, editing:false, form:this.blank(t)}); }
+  set(patch){ this.setState({form:{...this.state.form, ...patch}}); }
+  commit(){
+    const f=this.state.form, name=(f.name||'').trim(); if(!name) return;
+    const dd=Math.max(1,Math.min(31,parseInt(f.dueDay,10)||1)), key=this.vk();
+    const o={id:f.id||('u'+Date.now()),name,category:f.category,amount:parseAmt(f.amount),dueDay:dd,type:f.type,recurring:!f.installment&&!!f.recurring,variable:!f.installment&&!!f.variable,installment:!!f.installment};
+    if(o.installment){ const cur=parseInt(f.installmentCurrent)||1; o.installmentTotal=parseInt(f.installmentTotal)||1; o.startMonth=kFromI(mIdx(key)-(cur-1)); }
+    else if(!o.recurring){ o.month=key; }
+    let bills=this.state.bills.slice(), i=bills.findIndex(x=>x.id===o.id);
+    if(i>=0) bills[i]=o; else bills.push(o);
+    this.setState({bills, sheet:false}, ()=>this.save());
+  }
+  del(){
+    const id=this.state.form.id; if(!id){ this.setState({sheet:false}); return; }
+    const bills=this.state.bills.filter(b=>b.id!==id), np={};
+    Object.keys(this.state.payments).forEach(k=>{ if(k.split(':')[0]!==id) np[k]=this.state.payments[k]; });
+    this.setState({bills, payments:np, sheet:false}, ()=>this.save());
+  }
+
+  // ---- pieces ----
+  iconBtn(label,onClick){ return h('button',{onClick,style:{width:40,height:40,border:'2px solid '+INK,background:CARD,borderRadius:11,cursor:'pointer',fontSize:18,fontWeight:700,color:INK,display:'flex',alignItems:'center',justifyContent:'center'}},label); }
+
+  card(r,key){
+    return h('div',{key:r.id, onClick:()=>this.edit(r.bill), style:{display:'flex',gap:13,alignItems:'center',border:'2px solid '+INK,borderRadius:14,padding:'13px 14px',cursor:'pointer',background:r.paid?'#FBFAF4':r.cat.tint}},
+      h('button',{onClick:e=>this.toggle(r.bill,key,e), style:{width:32,height:32,flex:'none',border:'2px solid '+(r.paid?GREEN:INK),borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,fontWeight:700,cursor:'pointer',background:r.paid?GREEN:CARD,color:r.paid?'#fff':'transparent'}}, '✓'),
+      h('div',{style:{flex:1,minWidth:0}},
+        h('div',{style:{display:'flex',gap:7,alignItems:'center',marginBottom:3,flexWrap:'wrap'}},
+          h('span',{style:{...SI(10.5),textTransform:'uppercase',letterSpacing:'.04em',color:r.cat.ink}}, r.cat.label),
+          h('span',{style:{...SI(10.5),color:INK,opacity:.32}}, 'dia '+r.dueDay),
+          r.inst && h('span',{style:{...SI(9.5),color:INK,opacity:.5,background:'rgba(20,20,15,.06)',padding:'2px 6px',borderRadius:5}}, r.inst+'×')
+        ),
+        h('div',{style:{fontWeight:700,fontSize:17,letterSpacing:'-.01em',color:INK,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, r.name)
+      ),
+      h('div',{style:{textAlign:'right',flex:'none'}},
+        h('div',{style:{...SI(15),color:INK}}, r.amt),
+        h('div',{style:{...SI(10.5),textTransform:'uppercase',marginTop:2,color:r.st.color}}, r.st.label)
+      )
+    );
+  }
+
+  stat(label,val,opts){
+    opts = opts||{};
+    return h('div',{style:{flex:1,border:'2px solid '+INK,borderRadius:13,padding:'11px 12px',background:opts.bg||CARD}},
+      h('div',{style:{...SI(9.5),letterSpacing:'.05em',textTransform:'uppercase',color:opts.fg||INK,opacity:opts.lo||.55}}, label),
+      h('div',{style:{...SI(15.5),color:opts.vc||INK,marginTop:3}}, val)
+    );
+  }
+
+  seg(items, val, onPick){
+    return h('div',{style:{display:'flex',border:'2px solid '+INK,borderRadius:12,padding:3,background:CARD}},
+      items.map(it => h('button',{key:it.v, onClick:()=>onPick(it.v), style:{flex:1,textAlign:'center',padding:'9px 0',...SI(12),letterSpacing:'.03em',textTransform:'uppercase',cursor:'pointer',border:'none',borderRadius:8,background:val===it.v?INK:'transparent',color:val===it.v?PAPER:INK,opacity:val===it.v?1:.5}}, it.l))
+    );
+  }
+
+  tabMes(key){
+    const pi=this.inst(key,'pay').slice().sort((a,b)=>a.dueDay-b.dueDay);
+    let tot=0,ps=0,pc=0;
+    pi.forEach(b=>{ const e=this.eff(b,key); tot+=e; if(this.sta(b,key).k==='pago'){ps+=e;pc++;} });
+    const pct=tot>0?Math.round(ps/tot*100):0;
+    const rows=pi.map(b=>this.row(b,key));
+    const order=['atrasado','breve','avencer','pago'], titles={atrasado:'Atrasadas',breve:'Vence em breve',avencer:'A vencer',pago:'Pagas'}, gc={atrasado:RED,breve:AMBER,avencer:INK,pago:GREEN};
+    const groups=order.map(k=>{ const it=rows.filter(r=>r.st.k===k); return it.length?{k,title:titles[k],color:gc[k],items:it}:null; }).filter(Boolean);
+    return h('div',null,
+      h('div',{style:{display:'flex',gap:8,marginBottom:14}},
+        this.stat('Total', brl(tot), {lo:.5}),
+        this.stat('Pago', brl(ps), {vc:GREEN,lo:.5}),
+        this.stat('Falta', brl(tot-ps), {bg:INK,fg:PAPER,vc:PAPER})
+      ),
+      h('div',{style:{height:13,border:'2px solid '+INK,borderRadius:20,overflow:'hidden',background:CARD,marginBottom:7}},
+        h('div',{style:{height:'100%',background:GREEN,width:pct+'%',transition:'width .35s ease'}})
+      ),
+      h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:16}},
+        h('span',{style:{...SI(11),color:INK,opacity:.55}}, pi.length+' contas · '+pc+' pagas'),
+        h('span',{style:{...SI(11),color:INK}}, pct+'%')
+      ),
+      h('div',{style:{marginBottom:16}}, this.seg([{v:'lista',l:'Lista'},{v:'status',l:'Por status'}], this.state.hl, v=>this.setState({hl:v}))),
+      this.state.hl==='lista'
+        ? h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, rows.map(r=>this.card(r,key)))
+        : h('div',{style:{display:'flex',flexDirection:'column',gap:18}}, groups.map(g=>
+            h('div',{key:g.k},
+              h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',background:g.color,color:'#fff',padding:'9px 14px',border:'2px solid '+INK,borderRadius:'12px 12px 0 0',...SI(12),letterSpacing:'.04em',textTransform:'uppercase'}},
+                h('span',null,g.title), h('span',{style:{opacity:.8}}, g.items.length)
+              ),
+              h('div',{style:{border:'2px solid '+INK,borderTop:'none',borderRadius:'0 0 12px 12px',overflow:'hidden',display:'flex',flexDirection:'column'}},
+                g.items.map((r,i)=>h('div',{key:r.id,style:{borderTop:i>0?'2px solid '+INK:'none'}}, this.card(r,key)))
+              )
+            )
+          ))
+    );
+  }
+
+  tabCal(key){
+    const [yy,mm]=key.split('-').map(Number);
+    const pi=this.inst(key,'pay').slice().sort((a,b)=>a.dueDay-b.dueDay);
+    const byDay={}; pi.forEach(b=>{ (byDay[b.dueDay]=byDay[b.dueDay]||[]).push(b); });
+    const lead=(new Date(yy,mm-1,1).getDay()+6)%7, dim=new Date(yy,mm,0).getDate();
+    if(this.state.cl==='mes'){
+      const cells=[];
+      for(let i=0;i<42;i++){
+        const dn=i-lead+1;
+        if(dn<1||dn>dim){ cells.push(h('div',{key:i,style:{background:PAPER,aspectRatio:'1'}})); continue; }
+        const isT=key===CUR&&dn===TODAY.d, list=byDay[dn]||[];
+        let bg=CARD, fg=INK;
+        if(list.length){ const sts=list.map(b=>this.sta(b,key).k);
+          if(sts.indexOf('atrasado')>=0){bg=RED;fg='#fff';}
+          else if(sts.every(s=>s==='pago')){bg=GREEN;fg='#fff';}
+          else if(sts.indexOf('breve')>=0){bg=AMBER;fg='#fff';}
+        }
+        cells.push(h('div',{key:i, onClick:()=>list.length&&this.setState({dayOpen:true,daySel:dn}), style:{aspectRatio:'1',background:bg,display:'flex',flexDirection:'column',justifyContent:'space-between',padding:'5px 6px',cursor:list.length?'pointer':'default'}},
+          h('span',{style:isT?{...SI(13),fontFamily:ARCH,color:'#fff',background:INK,width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}:{...SI(13),color:fg}}, dn),
+          list.length>0 && h('span',{style:{alignSelf:'flex-end',...SI(9),color:fg,opacity:.85}}, list.length)
+        ));
+      }
+      return h('div',null,
+        h('div',{style:{marginBottom:16}}, this.seg([{v:'mes',l:'Mês'},{v:'agenda',l:'Agenda'}], this.state.cl, v=>this.setState({cl:v}))),
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:1.5,border:'2px solid '+INK,borderRadius:13,overflow:'hidden',background:INK}},
+          WDH.map(w=>h('div',{key:w,style:{background:INK,color:PAPER,textAlign:'center',padding:'7px 0',...SI(10),textTransform:'uppercase'}}, w)),
+          cells
+        ),
+        h('div',{style:{display:'flex',flexWrap:'wrap',gap:13,marginTop:16}},
+          [[GREEN,'Pago'],[RED,'Atrasado'],[AMBER,'Vence em breve'],[CARD,'A vencer']].map(p=>
+            h('div',{key:p[1],style:{display:'flex',alignItems:'center',gap:6}},
+              h('span',{style:{width:13,height:13,borderRadius:4,background:p[0],border:p[0]===CARD?'2px solid '+INK:'none'}}),
+              h('span',{style:{...SI(11),color:INK,opacity:.7}}, p[1])
+            ))
+        )
+      );
+    }
+    const days=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
+    return h('div',null,
+      h('div',{style:{marginBottom:16}}, this.seg([{v:'mes',l:'Mês'},{v:'agenda',l:'Agenda'}], this.state.cl, v=>this.setState({cl:v}))),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:16}}, days.map(d=>{
+        const wd=new Date(yy,mm-1,d).getDay(), isT=key===CUR&&d===TODAY.d;
+        return h('div',{key:d,style:{display:'flex',gap:12}},
+          h('div',{style:{flex:'none',width:58,border:'2px solid '+INK,borderRadius:12,padding:'9px 0',textAlign:'center',background:isT?INK:CARD,color:isT?PAPER:INK}},
+            h('div',{style:{fontFamily:ARCH,fontWeight:900,fontSize:22,lineHeight:1}}, d),
+            h('div',{style:{...SI(9),textTransform:'uppercase',marginTop:2,opacity:.8}}, WD[wd])
+          ),
+          h('div',{style:{flex:1,display:'flex',flexDirection:'column',gap:8}}, byDay[d].map(b=>this.card(this.row(b,key),key)))
+        );
+      }))
+    );
+  }
+
+  tabReceber(key){
+    const ri=this.inst(key,'receive').slice().sort((a,b)=>a.dueDay-b.dueDay);
+    let rt=0,rg=0; ri.forEach(b=>{ const e=this.eff(b,key); rt+=e; if(this.sta(b,key).k==='pago') rg+=e; });
+    return h('div',null,
+      h('div',{style:{display:'flex',gap:8,marginBottom:18}},
+        this.stat('Total', brl(rt), {lo:.5}),
+        this.stat('Recebido', brl(rg), {bg:BLUE,fg:'#fff',vc:'#fff'}),
+        this.stat('Falta', brl(rt-rg), {bg:INK,fg:PAPER,vc:PAPER})
+      ),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, ri.map(b=>this.card(this.row(b,key),key)))
+    );
+  }
+
+  navItem(id,label){
+    const a=this.state.tab===id;
+    return h('button',{onClick:()=>this.setState({tab:id}), style:{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:5,paddingTop:10}},
+      h('div',{style:{height:3,width:26,borderRadius:3,background:a?GREEN:'transparent'}}),
+      h('span',{style:{...SI(11),letterSpacing:'.03em',textTransform:'uppercase',color:a?INK:'rgba(20,20,15,.4)'}}, label)
+    );
+  }
+
+  // ---- overlays ----
+  toggleRow(title,sub,on,fn){
+    return h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',border:'2px solid '+INK,borderRadius:12,padding:'12px 14px',background:CARD,marginBottom:10}},
+      h('div',null,
+        h('div',{style:{fontWeight:700,fontSize:15,color:INK}}, title),
+        h('div',{style:{fontWeight:400,fontSize:12,color:INK,opacity:.55}}, sub)
+      ),
+      h('button',{onClick:fn,style:{minWidth:64,padding:'9px 0',...SI(12),cursor:'pointer',border:'2px solid '+INK,borderRadius:9,background:on?INK:CARD,color:on?PAPER:'rgba(20,20,15,.4)'}}, on?'Sim':'Não')
+    );
+  }
+
+  sheetEl(){
+    const f=this.state.form, editing=this.state.editing;
+    const LBL={display:'block',...SI(11),textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.6,marginBottom:6};
+    const INP={width:'100%',border:'2px solid '+INK,borderRadius:11,padding:'13px 14px',fontWeight:600,fontSize:16,background:CARD,color:INK,outline:'none',display:'block',marginBottom:16};
+    return h('div',{style:{position:'absolute',inset:0,zIndex:30,display:'flex',flexDirection:'column',justifyContent:'flex-end'}},
+      h('div',{onClick:()=>this.setState({sheet:false}),style:{position:'absolute',inset:0,background:'rgba(20,20,15,.42)',animation:'fadeIn .2s ease'}}),
+      h('div',{className:'scroll',style:{position:'relative',background:PAPER,borderTopLeftRadius:28,borderTopRightRadius:28,border:'2px solid '+INK,borderBottom:'none',maxHeight:'92%',overflowY:'auto',padding:'10px 22px calc(34px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
+        h('div',{style:{width:42,height:5,borderRadius:3,background:INK,opacity:.25,margin:'6px auto 16px'}}),
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}},
+          h('h2',{style:{margin:0,fontFamily:ARCH,fontWeight:900,fontSize:26,letterSpacing:'-.02em',color:INK}}, editing?'Editar conta':'Nova conta'),
+          this.iconBtn('✕', ()=>this.setState({sheet:false}))
+        ),
+        h('div',{style:{marginBottom:18}}, this.seg([{v:'pay',l:'Pagar'},{v:'receive',l:'Receber'}], f.type, v=>this.set({type:v}))),
+        h('label',{style:LBL},'Nome'),
+        h('input',{value:f.name, onChange:e=>this.set({name:e.target.value}), placeholder:'Ex: Conta de luz', style:INP}),
+        h('label',{style:LBL},'Categoria'),
+        h('select',{value:f.category, onChange:e=>this.set({category:e.target.value}), style:{...INP,WebkitAppearance:'none',appearance:'none'}}, CATKEYS.map(k=>h('option',{key:k,value:k}, CATS[k].label))),
+        h('div',{style:{display:'flex',gap:12,marginBottom:16}},
+          h('div',{style:{flex:1.4}},
+            h('label',{style:LBL}, f.installment?'Valor parcela':(f.variable?'Valor estimado':'Valor')),
+            h('input',{value:f.amount, onChange:e=>this.set({amount:e.target.value}), inputMode:'decimal', placeholder:'0,00', style:{...INP,marginBottom:0,...SI(16)}})
+          ),
+          h('div',{style:{flex:1}},
+            h('label',{style:LBL},'Dia'),
+            h('input',{value:f.dueDay, onChange:e=>this.set({dueDay:e.target.value}), inputMode:'numeric', placeholder:'1–31', style:{...INP,marginBottom:0}})
+          )
+        ),
+        this.toggleRow('Parcelado','Compra em parcelas fixas', f.installment, ()=>this.set({installment:!f.installment})),
+        f.installment && h('div',{style:{display:'flex',gap:12,border:'2px solid '+INK,borderRadius:12,padding:14,background:CARD,marginBottom:10}},
+          h('div',{style:{flex:1}}, h('label',{style:LBL},'Total parcelas'), h('input',{value:f.installmentTotal, onChange:e=>this.set({installmentTotal:e.target.value}), inputMode:'numeric', placeholder:'12', style:{...INP,marginBottom:0}})),
+          h('div',{style:{flex:1}}, h('label',{style:LBL},'Parcela atual'), h('input',{value:f.installmentCurrent, onChange:e=>this.set({installmentCurrent:e.target.value}), inputMode:'numeric', placeholder:'1', style:{...INP,marginBottom:0}}))
+        ),
+        !f.installment && h('div',null,
+          this.toggleRow('Recorrente','Repete todo mês', f.recurring, ()=>this.set({recurring:!f.recurring})),
+          this.toggleRow('Valor muda todo mês','Luz, água, condomínio…', f.variable, ()=>this.set({variable:!f.variable}))
+        ),
+        h('div',{style:{height:8}}),
+        h('button',{onClick:()=>this.commit(), style:{width:'100%',border:'2px solid '+INK,background:INK,color:PAPER,borderRadius:13,padding:16,fontFamily:ARCH,fontWeight:800,fontSize:16,letterSpacing:'.02em',textTransform:'uppercase',cursor:'pointer'}}, 'Salvar'),
+        editing && h('button',{onClick:()=>this.del(), style:{width:'100%',border:'none',background:'none',color:RED,padding:14,...SI(13),textTransform:'uppercase',letterSpacing:'.05em',cursor:'pointer',marginTop:4}}, 'Excluir conta')
+      )
+    );
+  }
+
+  dayEl(key){
+    const [, mm]=key.split('-').map(Number);
+    const list=(this.inst(key,'pay').filter(b=>b.dueDay===this.state.daySel)).slice().sort((a,b)=>a.dueDay-b.dueDay);
+    return h('div',{style:{position:'absolute',inset:0,zIndex:28,display:'flex',flexDirection:'column',justifyContent:'flex-end'}},
+      h('div',{onClick:()=>this.setState({dayOpen:false}),style:{position:'absolute',inset:0,background:'rgba(20,20,15,.42)',animation:'fadeIn .2s ease'}}),
+      h('div',{className:'scroll',style:{position:'relative',background:PAPER,borderTopLeftRadius:28,borderTopRightRadius:28,border:'2px solid '+INK,borderBottom:'none',maxHeight:'80%',overflowY:'auto',padding:'10px 22px calc(28px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
+        h('div',{style:{width:42,height:5,borderRadius:3,background:INK,opacity:.25,margin:'6px auto 16px'}}),
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}},
+          h('h2',{style:{margin:0,fontFamily:ARCH,fontWeight:900,fontSize:24,letterSpacing:'-.02em',color:INK}}, this.state.daySel+' de '+MONTHS[mm-1]),
+          this.iconBtn('✕', ()=>this.setState({dayOpen:false}))
+        ),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, list.map(b=>this.card(this.row(b,key),key)))
+      )
+    );
+  }
+
+  payEl(){
+    const pp=this.state.pp; if(!pp) return null;
+    const LBL={display:'block',...SI(11),textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.6,marginBottom:6};
+    return h('div',{style:{position:'absolute',inset:0,zIndex:32,display:'flex',alignItems:'center',justifyContent:'center',padding:28}},
+      h('div',{onClick:()=>this.setState({payOpen:false,pp:null}),style:{position:'absolute',inset:0,background:'rgba(20,20,15,.46)',animation:'fadeIn .2s ease'}}),
+      h('div',{style:{position:'relative',width:'100%',maxWidth:360,background:PAPER,border:'2px solid '+INK,borderRadius:20,padding:22,animation:'fadeIn .2s ease'}},
+        h('div',{style:{...SI(11),textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.5,marginBottom:4}}, 'Marcar como pago'),
+        h('h3',{style:{margin:'0 0 16px',fontFamily:ARCH,fontWeight:900,fontSize:21,color:INK}}, pp.name),
+        h('label',{style:LBL},'Quanto você pagou?'),
+        h('input',{value:pp.value, onChange:e=>this.setState({pp:{...pp,value:e.target.value}}), inputMode:'decimal', placeholder:'0,00', autoFocus:true, style:{width:'100%',border:'2px solid '+INK,borderRadius:11,padding:'13px 14px',...SI(18),background:CARD,color:INK,outline:'none',marginBottom:16}}),
+        h('div',{style:{display:'flex',gap:10}},
+          h('button',{onClick:()=>this.setState({payOpen:false,pp:null}), style:{flex:1,border:'2px solid '+INK,background:CARD,color:INK,borderRadius:12,padding:14,...SI(13),textTransform:'uppercase',cursor:'pointer'}}, 'Cancelar'),
+          h('button',{onClick:()=>{ this.pay(pp.id,pp.key,parseAmt(pp.value)); this.setState({payOpen:false,pp:null}); }, style:{flex:1.4,border:'2px solid '+INK,background:GREEN,color:'#fff',borderRadius:12,padding:14,...SI(13),textTransform:'uppercase',cursor:'pointer'}}, 'Confirmar')
+        )
+      )
+    );
+  }
+
+  render(){
+    const {tab,sheet,dayOpen,payOpen}=this.state;
+    const key=this.vk(), parts=key.split('-').map(Number), yy=parts[0], mm=parts[1];
+    let body;
+    if(tab==='mes') body=this.tabMes(key);
+    else if(tab==='cal') body=this.tabCal(key);
+    else body=this.tabReceber(key);
+
+    return h('div',{style:{position:'relative',height:'100dvh',width:'100%',maxWidth:520,margin:'0 auto',background:PAPER,display:'flex',flexDirection:'column',overflow:'hidden'}},
+      h('header',{style:{padding:'calc(14px + env(safe-area-inset-top)) 20px 10px',flex:'none',background:PAPER}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
+          h('div',{style:{display:'flex',gap:8}}, this.iconBtn('‹', ()=>this.setState({offset:this.state.offset-1})), this.iconBtn('›', ()=>this.setState({offset:this.state.offset+1}))),
+          key!==CUR && h('button',{onClick:()=>this.setState({offset:0}), style:{padding:'8px 15px',border:'2px solid '+INK,background:INK,color:PAPER,borderRadius:10,...SI(11),letterSpacing:'.06em',textTransform:'uppercase',cursor:'pointer'}}, 'Hoje')
+        ),
+        h('div',{style:{display:'flex',alignItems:'flex-end',gap:10,lineHeight:.9}},
+          h('h1',{style:{margin:0,fontFamily:ARCH,fontWeight:900,fontSize:42,letterSpacing:'-.03em',color:INK,textTransform:'uppercase'}}, MONTHS[mm-1].toUpperCase()),
+          h('span',{style:{...SI(18),color:INK,opacity:.42,paddingBottom:5}}, yy)
+        )
+      ),
+      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 20px calc(108px + env(safe-area-inset-bottom))'}}, body),
+      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:20,bottom:'calc(98px + env(safe-area-inset-bottom))',width:60,height:60,borderRadius:19,border:'2px solid '+INK,background:GREEN,color:'#fff',fontSize:32,fontWeight:700,cursor:'pointer',zIndex:8,boxShadow:'0 8px 22px -6px rgba(20,20,15,.5)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
+      h('nav',{style:{flex:'none',background:PAPER,borderTop:'2px solid '+INK,display:'flex',padding:'0 8px calc(14px + env(safe-area-inset-bottom))',paddingTop:0,height:'calc(78px + env(safe-area-inset-bottom))'}},
+        this.navItem('mes','Mês'), this.navItem('cal','Agenda'), this.navItem('receber','Receber')
+      ),
+      sheet && this.sheetEl(),
+      dayOpen && this.dayEl(key),
+      payOpen && this.payEl()
+    );
+  }
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App));
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (nw) nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage('skipWaiting');
+            window.location.reload();
+          }
+        });
+      });
+    }).catch(() => {});
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return; refreshing = true; window.location.reload();
+    });
+  });
+}
+</script>
+</body>
+</html>
