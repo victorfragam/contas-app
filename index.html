@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contas">
+<meta name="theme-color" content="#14140F">
+<title>Contas</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E7E4DC;font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes sheetUp{from{transform:translateY(102%)}to{transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@media(display-mode:standalone){
+  body{background:#14140F;align-items:stretch;justify-content:center;padding:0}
+  .pf{width:100%!important;max-width:430px!important;height:100dvh!important;border-radius:0!important;padding:0!important;box-shadow:none!important;background:transparent!important}
+  .ps{border-radius:0!important}
+  .fu{display:none!important}
+  .ah{padding-top:calc(54px + env(safe-area-inset-top))!important}
+  .an{height:calc(84px + env(safe-area-inset-bottom))!important;padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
+  .am{padding-bottom:calc(132px + env(safe-area-inset-bottom))!important}
+}
+</style>
+</head>
+<body>
+<div id="ld" style="position:fixed;inset:0;background:#14140F;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="text-align:center">
+    <div style="font-family:'Space Grotesk',system-ui;font-weight:700;font-size:34px;color:#1FA85F;letter-spacing:.04em">R$</div>
+    <div style="font-family:'Space Grotesk',system-ui;font-weight:600;font-size:11px;color:#fff;opacity:.3;letter-spacing:.16em;margin-top:10px;text-transform:uppercase">Contas</div>
+  </div>
+</div>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+'use strict';
+const INK='#14140F',PAPER='#F4F1E9',RED='#E0492F',AMBER='#E0922F',BLUE='#2E8FC9',GREEN='#1FA85F';
+const CATS={
+  moradia:   {label:'Moradia',    tint:'#F1E9D4',ink:'#8A6A1E'},
+  utilidades:{label:'Utilidades', tint:'#DCECF6',ink:'#2D6E92'},
+  internet:  {label:'Internet',   tint:'#E4E7FB',ink:'#3B4FA8'},
+  cartao:    {label:'Cartão',     tint:'#F7E2E0',ink:'#B0413A'},
+  telefone:  {label:'Telefone',   tint:'#EAE3F7',ink:'#6A4DA8'},
+  streaming: {label:'Streaming',  tint:'#F7EAD7',ink:'#A86A1E'},
+  saude:     {label:'Saúde',      tint:'#DEF1E4',ink:'#2C8350'},
+  outros:    {label:'Outros',     tint:'#ECECE6',ink:'#55554E'},
+};
+const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const WD=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const WDH=['seg','ter','qua','qui','sex','sáb','dom'];
+const STORE='contasApp.v1';
+const TODAY={y:2026,m:6,d:21};
+const CUR='2026-06';
+
+function mIdx(k){if(!k)return 0;const[y,m]=k.split('-').map(Number);return y*12+(m-1);}
+function kFromI(i){const y=Math.floor(i/12),m=i%12;return y+'-'+String(m+1).padStart(2,'0');}
+function brl(n){return'R$ '+(Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function parseAmt(s){if(typeof s==='number')return s;s=String(s||'').trim().replace(/\s/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:n;}
+function cs(str){
+  if(!str)return{};
+  const o={};
+  str.split(';').forEach(r=>{
+    r=r.trim();if(!r)return;
+    const i=r.indexOf(':');if(i<0)return;
+    const p=r.slice(0,i).trim(),v=r.slice(i+1).trim();
+    if(!p||!v)return;
+    o[p.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=v;
+  });
+  return o;
+}
+function seed(){return{
+  bills:[
+    {id:'b1', name:'Aluguel',        category:'moradia',    amount:1800,dueDay:5, recurring:true, variable:false,type:'pay'},
+    {id:'b2', name:'Condomínio',      category:'moradia',    amount:650, dueDay:10,recurring:true, variable:true, type:'pay'},
+    {id:'b3', name:'Energia',         category:'utilidades', amount:180, dueDay:12,recurring:true, variable:true, type:'pay'},
+    {id:'b4', name:'Água',            category:'utilidades', amount:90,  dueDay:15,recurring:true, variable:true, type:'pay'},
+    {id:'b5', name:'Cartão Nubank',   category:'cartao',     amount:2300,dueDay:18,recurring:true, variable:true, type:'pay'},
+    {id:'b6', name:'Internet',        category:'internet',   amount:120, dueDay:25,recurring:true, variable:false,type:'pay'},
+    {id:'b7', name:'Netflix',         category:'streaming',  amount:55,  dueDay:24,recurring:true, variable:false,type:'pay'},
+    {id:'b8', name:'Celular',         category:'telefone',   amount:60,  dueDay:28,recurring:true, variable:false,type:'pay'},
+    {id:'b9', name:'Academia',        category:'saude',      amount:110, dueDay:8, recurring:true, variable:false,type:'pay'},
+    {id:'b10',name:'Celular Samsung', category:'cartao',     amount:350, dueDay:20,recurring:false,variable:false,installment:true,installmentTotal:12,startMonth:'2026-04',type:'pay'},
+    {id:'r1', name:'Salário',         category:'outros',     amount:6500,dueDay:5, recurring:true, variable:false,type:'receive'},
+    {id:'r2', name:'Freela',          category:'outros',     amount:1200,dueDay:26,recurring:false,variable:false,type:'receive',month:'2026-06'},
+  ],
+  payments:{
+    'b1:2026-06':{paid:true,amount:1800},
+    'b2:2026-06':{paid:true,amount:672},
+    'b9:2026-06':{paid:true,amount:110},
+    'r1:2026-06':{paid:true,amount:6500},
+  },
+};}
+function load(){try{const r=localStorage.getItem(STORE);if(r)return JSON.parse(r);}catch(e){}return null;}
+function persist(s){try{localStorage.setItem(STORE,JSON.stringify({bills:s.bills,payments:s.payments}));}catch(e){}}
+
+const LBL={display:'block',fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.6,marginBottom:6};
+const INP={width:'100%',border:`2px solid ${INK}`,borderRadius:11,padding:'13px 14px',fontWeight:600,fontSize:16,fontFamily:"'Space Grotesk',system-ui",background:'#fff',color:INK,outline:'none',display:'block',marginBottom:16};
+
+function TR({title,sub,st,label,fn}){
+  return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',border:`2px solid ${INK}`,borderRadius:11,padding:'12px 14px',background:'#fff',marginBottom:10}}>
+      <div>
+        <div style={{fontWeight:700,fontSize:15,color:INK}}>{title}</div>
+        <div style={{fontWeight:400,fontSize:12,color:INK,opacity:.55}}>{sub}</div>
+      </div>
+      <button onClick={fn} style={st}>{label}</button>
+    </div>
+  );
+}
+
+function Card({row}){
+  return(
+    <div onClick={row.onEdit} style={cs(row.cs)}>
+      <button onClick={row.onToggle} style={cs(row.ck)}>{row.check}</button>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3,flexWrap:'wrap'}}>
+          <span style={cs(row.ts)}>{row.catLabel}</span>
+          <span style={{fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",color:INK,opacity:.35}}>{row.dueLabel}</span>
+          {row.il&&<span style={{fontWeight:700,fontSize:10,fontFamily:"'Space Mono',monospace",opacity:.55,color:INK,background:'rgba(20,20,15,.06)',padding:'2px 6px',borderRadius:4}}>{row.il}</span>}
+        </div>
+        <div style={{fontWeight:700,fontSize:17,color:INK,letterSpacing:'-.01em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{row.name}</div>
+      </div>
+      <div style={{textAlign:'right',flex:'none'}}>
+        <div style={{fontWeight:700,fontSize:15,fontFamily:"'Space Mono',monospace",color:INK}}>{row.amtLabel}</div>
+        <div style={cs(row.ss)}>{row.stLabel}</div>
+      </div>
+    </div>
+  );
+}
+
+class App extends React.Component{
+  constructor(props){
+    super(props);
+    const sv=load(),sd=seed();
+    this.state={
+      bills:sv?sv.bills:sd.bills,
+      payments:sv?sv.payments:sd.payments,
+      offset:0,tab:'mes',hl:'lista',cl:'mes',
+      sheetOpen:false,editing:false,form:this.ef('pay'),
+      dayOpen:false,daySel:null,payOpen:false,pp:null,
+    };
+  }
+  ef(t){return{id:null,type:t||'pay',name:'',category:'utilidades',amount:'',dueDay:'',recurring:true,variable:false,installment:false,installmentTotal:'12',installmentCurrent:'1'};}
+  sv(){persist(this.state);}
+  vk(){const i=(TODAY.m-1)+this.state.offset,y=TODAY.y+Math.floor(i/12),m=((i%12)+12)%12;return y+'-'+String(m+1).padStart(2,'0');}
+  inst(key,type){
+    return this.state.bills.filter(b=>{
+      if(b.type!==type)return false;
+      if(b.recurring)return true;
+      if(b.installment){const si=mIdx(b.startMonth||key),ki=mIdx(key),n=ki-si;return n>=0&&n<(b.installmentTotal||1);}
+      return b.month===key;
+    });
+  }
+  eff(b,key){const p=this.state.payments[b.id+':'+key];if(p&&p.paid&&p.amount!=null)return Number(p.amount);return Number(b.amount)||0;}
+  sta(b,key){
+    const p=this.state.payments[b.id+':'+key],paid=!!(p&&p.paid),rec=b.type==='receive';
+    if(paid)return{k:'pago',  color:GREEN,label:rec?'Recebido':'Pago'};
+    const past=key<CUR,cur=key===CUR;
+    if(past)return{k:'atrasado',color:RED,label:'Atrasado'};
+    if(cur){
+      if(b.dueDay<TODAY.d)return{k:'atrasado',color:RED,label:'Atrasado'};
+      const d=b.dueDay-TODAY.d;
+      if(d<=3)return{k:'breve',color:AMBER,label:d===0?(rec?'Recebe hoje':'Vence hoje'):((rec?'Recebe ':'Vence ')+'em '+d+'d')};
+    }
+    return{k:'avencer',color:INK,label:rec?'A receber':'A vencer'};
+  }
+  mkRow(b,key){
+    const cat=CATS[b.category]||CATS.outros,st=this.sta(b,key);
+    const p=this.state.payments[b.id+':'+key],paid=!!(p&&p.paid);
+    const ef=this.eff(b,key),est=b.variable&&!paid;
+    let il='';if(b.installment){const n=mIdx(key)-mIdx(b.startMonth||key)+1;il=n+'/'+(b.installmentTotal||'?')+'×';}
+    return{
+      id:b.id,name:b.name,il,
+      catLabel:cat.label,dueLabel:'dia '+b.dueDay,
+      amtLabel:(est?'~ ':'')+brl(est?b.amount:ef),
+      stLabel:st.label,stKey:st.k,
+      check:paid?'✓':'',
+      cs:`display:flex;gap:13px;align-items:center;border:2px solid ${INK};border-radius:13px;padding:13px 14px;cursor:pointer;background:${paid?'#FBFAF4':cat.tint}`,
+      xcs:`display:flex;gap:11px;align-items:center;padding:12px 14px;cursor:pointer;background:${paid?'#FBFAF4':'#fff'}`,
+      ck:`width:30px;height:30px;flex:none;border:2px solid ${paid?GREEN:INK};border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;background:${paid?GREEN:'#fff'};color:${paid?'#fff':'transparent'}`,
+      xck:`width:24px;height:24px;flex:none;border:2px solid ${paid?GREEN:INK};border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;background:${paid?GREEN:'#fff'};color:${paid?'#fff':'transparent'}`,
+      ts:`font-weight:700;font-size:11px;font-family:'Space Mono',monospace;letter-spacing:.04em;text-transform:uppercase;color:${cat.ink}`,
+      ss:`font-weight:700;font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.02em;margin-top:2px;color:${st.color}`,
+      onToggle:e=>{if(e&&e.stopPropagation)e.stopPropagation();this.tog(b,key);},
+      onEdit:()=>this.oe(b),
+    };
+  }
+  tog(b,key){
+    const k=b.id+':'+key,p=this.state.payments[k];
+    if(p&&p.paid){const np={...this.state.payments};delete np[k];this.setState({payments:np},()=>this.sv());return;}
+    if(b.variable){this.setState({payOpen:true,pp:{id:b.id,key,name:b.name,value:String(b.amount).replace('.',',')}});return;}
+    this.sp(b.id,key,Number(b.amount)||0);
+  }
+  sp(id,key,amount){this.setState({payments:{...this.state.payments,[id+':'+key]:{paid:true,amount}}},()=>this.sv());}
+  oe(b){this.setState({sheetOpen:true,editing:true,form:{id:b.id,type:b.type,name:b.name,category:b.category,amount:String(b.amount).replace('.',','),dueDay:String(b.dueDay),recurring:!!b.recurring,variable:!!b.variable,installment:!!b.installment,installmentTotal:String(b.installmentTotal||'12'),installmentCurrent:b.installment?String(mIdx(this.vk())-mIdx(b.startMonth||this.vk())+1):'1'}});}
+  on(){const t=this.state.tab==='receber'?'receive':'pay';this.setState({sheetOpen:true,editing:false,form:this.ef(t)});}
+  saveBill(){
+    const f=this.state.form,name=(f.name||'').trim();if(!name)return;
+    const dd=Math.max(1,Math.min(31,parseInt(f.dueDay,10)||1)),key=this.vk();
+    const obj={id:f.id||('u'+Date.now()),name,category:f.category,amount:parseAmt(f.amount),dueDay:dd,type:f.type,recurring:!f.installment&&!!f.recurring,variable:!f.installment&&!!f.variable,installment:!!f.installment};
+    if(obj.installment){const cur=parseInt(f.installmentCurrent)||1,tot=parseInt(f.installmentTotal)||1;obj.installmentTotal=tot;obj.startMonth=kFromI(mIdx(key)-(cur-1));obj.recurring=false;obj.variable=false;}
+    else if(!obj.recurring){obj.month=key;}
+    let bills=this.state.bills.slice(),i=bills.findIndex(x=>x.id===obj.id);
+    if(i>=0)bills[i]=obj;else bills.push(obj);
+    this.setState({bills,sheetOpen:false},()=>this.sv());
+  }
+  delBill(){
+    const id=this.state.form.id;if(!id){this.setState({sheetOpen:false});return;}
+    const bills=this.state.bills.filter(b=>b.id!==id);
+    const np={};Object.keys(this.state.payments).forEach(k=>{if(k.split(':')[0]!==id)np[k]=this.state.payments[k];});
+    this.setState({bills,payments:np,sheetOpen:false},()=>this.sv());
+  }
+  segSt(a){return{flex:1,textAlign:'center',padding:'9px 0',fontWeight:700,fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:'.03em',textTransform:'uppercase',cursor:'pointer',border:'none',borderRadius:8,background:a?INK:'transparent',color:a?PAPER:INK+'8c'};}
+  typSt(a){return{flex:1,textAlign:'center',padding:'11px 0',fontWeight:700,fontSize:13,fontFamily:"'Space Mono',monospace",letterSpacing:'.03em',textTransform:'uppercase',cursor:'pointer',border:'none',borderRadius:8,background:a?INK:'transparent',color:a?PAPER:INK+'8c'};}
+  togSt(a){return{minWidth:62,textAlign:'center',padding:'9px 0',fontWeight:700,fontSize:12,fontFamily:"'Space Mono',monospace",cursor:'pointer',border:`2px solid ${INK}`,borderRadius:9,background:a?INK:'#fff',color:a?PAPER:INK+'66'};}
+
+  vals(){
+    const key=this.vk(),[yy,mm]=key.split('-').map(Number);
+    const pi=this.inst(key,'pay').slice().sort((a,b)=>a.dueDay-b.dueDay);
+    let tot=0,ps=0,pc=0,oc=0;
+    pi.forEach(b=>{const e=this.eff(b,key);tot+=e;const s=this.sta(b,key);if(s.k==='pago'){ps+=e;pc++;}if(s.k==='atrasado')oc++;});
+    const pct=tot>0?Math.round(ps/tot*100):0;
+    const br=pi.map(b=>this.mkRow(b,key));
+    const ord=['atrasado','breve','avencer','pago'],
+      tits={atrasado:'Atrasadas',breve:'Vence em breve',avencer:'A vencer',pago:'Pagas'},
+      gc={atrasado:RED,breve:AMBER,avencer:INK,pago:GREEN};
+    const groups=ord.map(k=>{const it=br.filter(r=>r.stKey===k);if(!it.length)return null;return{title:tits[k],count:String(it.length),items:it,color:gc[k]};}).filter(Boolean);
+    const lead=(new Date(yy,mm-1,1).getDay()+6)%7,dim=new Date(yy,mm,0).getDate();
+    const byDay={};pi.forEach(b=>{(byDay[b.dueDay]=byDay[b.dueDay]||[]).push(b);});
+    const cells=[];
+    for(let i=0;i<42;i++){
+      const dn=i-lead+1;if(dn<1||dn>dim){cells.push({e:true});continue;}
+      const isT=key===CUR&&dn===TODAY.d,list=byDay[dn]||[];
+      let bg='#fff',fg=INK;
+      if(list.length){const sts=list.map(b=>this.sta(b,key).k);if(sts.indexOf('atrasado')>=0){bg=RED;fg='#fff';}else if(sts.every(s=>s==='pago')){bg=GREEN;fg='#fff';}else if(sts.indexOf('breve')>=0){bg=AMBER;fg='#fff';}}
+      const d=dn;cells.push({e:false,dn,bg,fg,isT,cnt:list.length,click:()=>this.setState({dayOpen:true,daySel:d})});
+    }
+    const ag=Object.keys(byDay).map(d=>parseInt(d)).sort((a,b)=>a-b).map(d=>{const wd=new Date(yy,mm-1,d).getDay(),isT=key===CUR&&d===TODAY.d;return{dn:d,wd:WD[wd],isT,items:byDay[d].map(b=>this.mkRow(b,key))};});
+    const ri=this.inst(key,'receive').slice().sort((a,b)=>a.dueDay-b.dueDay);
+    let rt=0,rg=0;ri.forEach(b=>{const e=this.eff(b,key);rt+=e;if(this.sta(b,key).k==='pago')rg+=e;});
+    const db=this.state.dayOpen&&this.state.daySel!=null?(byDay[this.state.daySel]||[]).map(b=>this.mkRow(b,key)):[];
+    const f=this.state.form,set=p=>this.setState({form:{...this.state.form,...p}});
+    return{key,yy,mm,pct,ps:pct+'%',monthBig:MONTHS[mm-1].toUpperCase(),yr:String(yy),notCur:key!==CUR,
+      payTotal:brl(tot),payPaid:brl(ps),payLeft:brl(tot-ps),
+      countLine:`${pi.length} contas · ${pc} pagas · ${oc} atrasadas`,
+      br,groups,wdh:WDH,cells,ag,
+      rr:ri.map(b=>this.mkRow(b,key)),rt:brl(rt),rg:brl(rg),rl:brl(rt-rg),
+      db,dayTitle:this.state.daySel!=null?`${this.state.daySel} de ${MONTHS[mm-1]}`:'',
+      form:{...f,
+        tpay:this.typSt(f.type==='pay'),trcv:this.typSt(f.type==='receive'),
+        recSt:this.togSt(f.recurring),recL:f.recurring?'Sim':'Não',
+        varSt:this.togSt(f.variable),varL:f.variable?'Sim':'Não',
+        insSt:this.togSt(f.installment),insL:f.installment?'Sim':'Não',
+        amtLbl:f.installment?'Valor por parcela':(f.variable?'Valor estimado':'Valor'),
+        showI:f.installment,showRV:!f.installment,
+      },
+      cats:Object.keys(CATS).map(k=>({key:k,label:CATS[k].label})),
+      set,
+    };
+  }
+
+  componentDidMount(){const el=document.getElementById('ld');if(el)el.style.display='none';}
+
+  render(){
+    const v=this.vals(),{tab,hl,cl,sheetOpen,editing,dayOpen,payOpen}=this.state;
+    return(
+      <div style={{minHeight:'100vh',width:'100%',display:'flex',alignItems:'center',justifyContent:'center',padding:28,background:'#E7E4DC'}}>
+        <div className="pf" style={{width:412,height:858,background:INK,borderRadius:54,padding:11,boxShadow:'0 30px 70px -20px rgba(20,20,15,.55),0 0 0 1px rgba(20,20,15,.5)'}}>
+          <div className="ps" style={{position:'relative',width:'100%',height:'100%',background:PAPER,borderRadius:44,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+            <div className="fu" style={{position:'absolute',top:0,left:0,right:0,height:44,display:'flex',alignItems:'flex-end',justifyContent:'space-between',padding:'0 30px 6px',zIndex:5,pointerEvents:'none'}}>
+              <span style={{fontWeight:700,fontSize:14,fontFamily:"'Space Mono',monospace",color:INK}}>9:41</span>
+              <span style={{fontWeight:700,fontSize:12,fontFamily:"'Space Mono',monospace",color:INK,letterSpacing:'.1em'}}>●●● ▮</span>
+            </div>
+            <div className="fu" style={{position:'absolute',top:13,left:'50%',transform:'translateX(-50%)',width:108,height:30,background:INK,borderRadius:18,zIndex:6}}></div>
+            <header className="ah" style={{padding:'54px 20px 0',flex:'none'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>this.setState({offset:this.state.offset-1})} style={{width:34,height:34,border:`2px solid ${INK}`,background:'#fff',borderRadius:9,fontSize:17,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:INK}}>‹</button>
+                  <button onClick={()=>this.setState({offset:this.state.offset+1})} style={{width:34,height:34,border:`2px solid ${INK}`,background:'#fff',borderRadius:9,fontSize:17,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:INK}}>›</button>
+                </div>
+                {v.notCur&&<button onClick={()=>this.setState({offset:0})} style={{padding:'7px 14px',border:`2px solid ${INK}`,background:INK,color:PAPER,borderRadius:9,fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:'.06em',textTransform:'uppercase',cursor:'pointer'}}>Hoje</button>}
+              </div>
+              <div style={{display:'flex',alignItems:'flex-end',gap:10,lineHeight:.9}}>
+                <h1 style={{margin:0,fontFamily:"'Archivo',system-ui",fontWeight:900,fontSize:44,letterSpacing:'-.03em',color:INK,textTransform:'uppercase'}}>{v.monthBig}</h1>
+                <span style={{fontWeight:700,fontSize:18,fontFamily:"'Space Mono',monospace",color:INK,opacity:.45,paddingBottom:6}}>{v.yr}</span>
+              </div>
+            </header>
+            <main className="am" style={{flex:1,overflowY:'auto',padding:'14px 20px 132px',WebkitOverflowScrolling:'touch'}}>
+              {tab==='mes'&&this.rMes(v)}
+              {tab==='cal'&&this.rCal(v)}
+              {tab==='receber'&&this.rRec(v)}
+            </main>
+            <button onClick={()=>this.on()} style={{position:'absolute',right:20,bottom:96,width:58,height:58,borderRadius:18,border:`2px solid ${INK}`,background:GREEN,color:'#fff',fontSize:30,fontWeight:700,cursor:'pointer',zIndex:8,boxShadow:'0 8px 20px -6px rgba(20,20,15,.5)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}>+</button>
+            <nav className="an" style={{position:'absolute',left:0,right:0,bottom:0,height:84,background:PAPER,borderTop:`2px solid ${INK}`,display:'flex',alignItems:'stretch',padding:'0 8px 18px',zIndex:7}}>
+              {[['mes','Mês'],['cal','Agenda'],['receber','Receber']].map(([id,lbl])=>(
+                <button key={id} onClick={()=>this.setState({tab:id})} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',gap:5,paddingTop:11}}>
+                  <div style={{height:3,width:26,borderRadius:3,background:tab===id?GREEN:'transparent'}}></div>
+                  <span style={{fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:'.04em',textTransform:'uppercase',color:tab===id?INK:INK+'59'}}>{lbl}</span>
+                </button>
+              ))}
+            </nav>
+            {sheetOpen&&this.rSheet(v,editing)}
+            {dayOpen&&this.rDay(v)}
+            {payOpen&&this.rPay()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  rMes(v){
+    const{hl}=this.state;
+    return(
+      <div>
+        <div style={{display:'flex',gap:8,marginBottom:14}}>
+          {[{lbl:'Total',val:v.payTotal,bg:'#fff',fc:INK,op:.5},{lbl:'Pago',val:v.payPaid,bg:'#fff',fc:GREEN,op:.5},{lbl:'Falta',val:v.payLeft,bg:INK,fc:PAPER,op:.55}].map(({lbl,val,bg,fc,op})=>(
+            <div key={lbl} style={{flex:1,border:`2px solid ${INK}`,borderRadius:12,padding:'11px 12px',background:bg}}>
+              <div style={{fontWeight:700,fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:'.06em',color:fc,opacity:op,textTransform:'uppercase'}}>{lbl}</div>
+              <div style={{fontWeight:700,fontSize:15,fontFamily:"'Space Mono',monospace",color:fc,marginTop:3}}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{height:12,border:`2px solid ${INK}`,borderRadius:20,overflow:'hidden',background:'#fff',marginBottom:7}}>
+          <div style={{height:'100%',background:GREEN,width:v.ps,transition:'width .35s ease'}}></div>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+          <span style={{fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",color:INK,opacity:.6}}>{v.countLine}</span>
+          <span style={{fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",color:INK}}>{v.ps}</span>
+        </div>
+        <div style={{display:'flex',border:`2px solid ${INK}`,borderRadius:11,padding:3,marginBottom:16,background:'#fff'}}>
+          <button onClick={()=>this.setState({hl:'lista'})}  style={this.segSt(hl==='lista')}>Lista</button>
+          <button onClick={()=>this.setState({hl:'status'})} style={this.segSt(hl==='status')}>Por status</button>
+        </div>
+        {hl==='lista'?(
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>{v.br.map(r=><Card key={r.id} row={r}/>)}</div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:18}}>
+            {v.groups.map(g=>(
+              <div key={g.title}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:g.color,color:'#fff',padding:'9px 14px',border:`2px solid ${INK}`,borderRadius:'12px 12px 0 0',fontWeight:700,fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:'.04em',textTransform:'uppercase'}}>
+                  <span>{g.title}</span><span style={{opacity:.8}}>{g.count}</span>
+                </div>
+                <div style={{border:`2px solid ${INK}`,borderTop:'none',borderRadius:'0 0 12px 12px',overflow:'hidden'}}>
+                  {g.items.map(r=>(
+                    <div key={r.id} onClick={r.onEdit} style={cs(r.xcs)}>
+                      <button onClick={r.onToggle} style={cs(r.xck)}>{r.check}</button>
+                      <span style={{flex:1,fontWeight:600,fontSize:15,color:INK,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        {r.name}{r.il&&<span style={{fontSize:11,opacity:.5,marginLeft:5}}> {r.il}</span>}
+                      </span>
+                      <span style={{fontWeight:700,fontSize:10,fontFamily:"'Space Mono',monospace",color:INK,opacity:.4,marginLeft:8,whiteSpace:'nowrap'}}>{r.dueLabel}</span>
+                      <span style={{fontWeight:700,fontSize:14,fontFamily:"'Space Mono',monospace",color:INK,marginLeft:8,whiteSpace:'nowrap'}}>{r.amtLabel}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  rCal(v){
+    const{cl}=this.state;
+    return(
+      <div>
+        <div style={{display:'flex',border:`2px solid ${INK}`,borderRadius:11,padding:3,marginBottom:16,background:'#fff'}}>
+          <button onClick={()=>this.setState({cl:'mes'})}    style={this.segSt(cl==='mes')}>Mês</button>
+          <button onClick={()=>this.setState({cl:'agenda'})} style={this.segSt(cl==='agenda')}>Agenda</button>
+        </div>
+        {cl==='mes'?(
+          <div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',border:`2px solid ${INK}`,borderRadius:13,overflow:'hidden',background:INK,gap:1.5}}>
+              {v.wdh.map(w=><div key={w} style={{background:INK,color:PAPER,textAlign:'center',padding:'7px 0',fontWeight:700,fontSize:10,fontFamily:"'Space Mono',monospace",textTransform:'uppercase'}}>{w}</div>)}
+              {v.cells.map((c,i)=>c.e
+                ?<div key={i} style={{background:PAPER,aspectRatio:1}}></div>
+                :<div key={i} onClick={c.click} style={{aspectRatio:1,background:c.bg,display:'flex',flexDirection:'column',alignItems:'flex-start',justifyContent:'space-between',padding:'6px 7px',cursor:'pointer'}}>
+                   <span style={{fontWeight:c.isT?900:700,fontSize:13,fontFamily:c.isT?"'Archivo'":`'Space Mono',monospace`,color:c.isT?'#fff':c.fg,background:c.isT?INK:'transparent',width:c.isT?22:'auto',height:c.isT?22:'auto',borderRadius:c.isT?'50%':'0',display:c.isT?'flex':'inline',alignItems:'center',justifyContent:'center'}}>{c.dn}</span>
+                   {c.cnt>0&&<span style={{alignSelf:'flex-end',fontWeight:700,fontSize:9,fontFamily:"'Space Mono',monospace",color:c.fg,opacity:.85}}>{c.cnt}{c.cnt>1?' contas':' conta'}</span>}
+                 </div>
+              )}
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:13,marginTop:16}}>
+              {[[GREEN,'Pago'],[RED,'Atrasado'],[AMBER,'Vence em breve'],['#fff','A vencer']].map(([color,label])=>(
+                <div key={label} style={{display:'flex',alignItems:'center',gap:6}}>
+                  <span style={{width:13,height:13,borderRadius:4,background:color,border:color==='#fff'?`2px solid ${INK}`:'none'}}></span>
+                  <span style={{fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",color:INK,opacity:.7}}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            {v.ag.map(d=>(
+              <div key={d.dn} style={{display:'flex',gap:12}}>
+                <div style={{flex:'none',width:56,border:`2px solid ${INK}`,borderRadius:12,padding:'9px 0',textAlign:'center',background:d.isT?INK:'#fff',color:d.isT?PAPER:INK}}>
+                  <div style={{fontFamily:"'Archivo',system-ui",fontWeight:900,fontSize:22,lineHeight:1}}>{d.dn}</div>
+                  <div style={{fontWeight:700,fontSize:9,fontFamily:"'Space Mono',monospace",textTransform:'uppercase',marginTop:2,opacity:.8}}>{d.wd}</div>
+                </div>
+                <div style={{flex:1,display:'flex',flexDirection:'column',gap:8}}>{d.items.map(r=><Card key={r.id} row={r}/>)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  rRec(v){
+    return(
+      <div>
+        <div style={{display:'flex',gap:8,marginBottom:18}}>
+          {[{lbl:'Total',val:v.rt,bg:'#fff',fc:INK,op:.5},{lbl:'Recebido',val:v.rg,bg:BLUE,fc:'#fff',op:.7},{lbl:'Falta',val:v.rl,bg:INK,fc:PAPER,op:.55}].map(({lbl,val,bg,fc,op})=>(
+            <div key={lbl} style={{flex:1,border:`2px solid ${INK}`,borderRadius:12,padding:'11px 12px',background:bg}}>
+              <div style={{fontWeight:700,fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:'.06em',color:fc,opacity:op,textTransform:'uppercase'}}>{lbl}</div>
+              <div style={{fontWeight:700,fontSize:15,fontFamily:"'Space Mono',monospace",color:fc,marginTop:3}}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>{v.rr.map(r=><Card key={r.id} row={r}/>)}</div>
+      </div>
+    );
+  }
+
+  rSheet(v,editing){
+    const f=v.form,set=v.set;
+    return(
+      <div style={{position:'absolute',inset:0,zIndex:20,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+        <div onClick={()=>this.setState({sheetOpen:false})} style={{position:'absolute',inset:0,background:'rgba(20,20,15,.4)',animation:'fadeIn .2s ease'}}></div>
+        <div style={{position:'relative',background:PAPER,borderTopLeftRadius:28,borderTopRightRadius:28,border:`2px solid ${INK}`,borderBottom:'none',maxHeight:'92%',overflowY:'auto',padding:'10px 22px 32px',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}}>
+          <div style={{width:42,height:5,borderRadius:3,background:INK,opacity:.25,margin:'6px auto 16px'}}></div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+            <h2 style={{margin:0,fontFamily:"'Archivo',system-ui",fontWeight:900,fontSize:26,letterSpacing:'-.02em',color:INK}}>{editing?'Editar conta':'Nova conta'}</h2>
+            <button onClick={()=>this.setState({sheetOpen:false})} style={{width:34,height:34,border:`2px solid ${INK}`,background:'#fff',borderRadius:9,fontSize:18,cursor:'pointer',color:INK}}>✕</button>
+          </div>
+          <div style={{display:'flex',border:`2px solid ${INK}`,borderRadius:11,padding:3,marginBottom:18,background:'#fff'}}>
+            <button onClick={()=>set({type:'pay'})}     style={f.tpay}>Pagar</button>
+            <button onClick={()=>set({type:'receive'})} style={f.trcv}>Receber</button>
+          </div>
+          <label style={LBL}>Nome</label>
+          <input value={f.name} onChange={e=>set({name:e.target.value})} placeholder="Ex: Conta de luz" style={INP}/>
+          <label style={LBL}>Categoria</label>
+          <select value={f.category} onChange={e=>set({category:e.target.value})} style={{...INP,WebkitAppearance:'none',appearance:'none'}}>
+            {v.cats.map(o=><option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+          <div style={{display:'flex',gap:12,marginBottom:16}}>
+            <div style={{flex:1.4}}>
+              <label style={LBL}>{f.amtLbl}</label>
+              <input value={f.amount} onChange={e=>set({amount:e.target.value})} inputMode="decimal" placeholder="0,00" style={{...INP,marginBottom:0,fontFamily:"'Space Mono',monospace",fontWeight:700}}/>
+            </div>
+            <div style={{flex:1}}>
+              <label style={LBL}>Dia</label>
+              <input value={f.dueDay} onChange={e=>set({dueDay:e.target.value})} inputMode="numeric" placeholder="1–31" style={{...INP,marginBottom:0}}/>
+            </div>
+          </div>
+          <TR title="Parcelado" sub="Compra em parcelas fixas" st={f.insSt} label={f.insL} fn={()=>set({installment:!f.installment})}/>
+          {f.showI&&(
+            <div style={{display:'flex',gap:12,border:`2px solid ${INK}`,borderRadius:11,padding:14,background:'#fff',marginBottom:10}}>
+              <div style={{flex:1}}>
+                <label style={LBL}>Total parcelas</label>
+                <input value={f.installmentTotal} onChange={e=>set({installmentTotal:e.target.value})} inputMode="numeric" placeholder="12" style={{...INP,marginBottom:0}}/>
+              </div>
+              <div style={{flex:1}}>
+                <label style={LBL}>Parcela atual</label>
+                <input value={f.installmentCurrent} onChange={e=>set({installmentCurrent:e.target.value})} inputMode="numeric" placeholder="1" style={{...INP,marginBottom:0}}/>
+              </div>
+            </div>
+          )}
+          {f.showRV&&(
+            <div>
+              <TR title="Recorrente"          sub="Repete todo mês"         st={f.recSt} label={f.recL} fn={()=>set({recurring:!f.recurring})}/>
+              <TR title="Valor muda todo mês" sub="Luz, água, condomínio…"  st={f.varSt} label={f.varL} fn={()=>set({variable:!f.variable})}/>
+            </div>
+          )}
+          <div style={{height:8}}></div>
+          <button onClick={()=>this.saveBill()} style={{width:'100%',border:`2px solid ${INK}`,background:INK,color:PAPER,borderRadius:13,padding:16,fontFamily:"'Archivo',system-ui",fontWeight:800,fontSize:16,letterSpacing:'.02em',textTransform:'uppercase',cursor:'pointer'}}>Salvar</button>
+          {editing&&<button onClick={()=>this.delBill()} style={{width:'100%',border:'none',background:'none',color:RED,padding:14,fontWeight:700,fontSize:13,fontFamily:"'Space Mono',monospace",textTransform:'uppercase',letterSpacing:'.05em',cursor:'pointer',marginTop:4}}>Excluir conta</button>}
+        </div>
+      </div>
+    );
+  }
+
+  rDay(v){
+    return(
+      <div style={{position:'absolute',inset:0,zIndex:19,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+        <div onClick={()=>this.setState({dayOpen:false})} style={{position:'absolute',inset:0,background:'rgba(20,20,15,.4)',animation:'fadeIn .2s ease'}}></div>
+        <div style={{position:'relative',background:PAPER,borderTopLeftRadius:28,borderTopRightRadius:28,border:`2px solid ${INK}`,borderBottom:'none',maxHeight:'80%',overflowY:'auto',padding:'10px 22px 28px',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}}>
+          <div style={{width:42,height:5,borderRadius:3,background:INK,opacity:.25,margin:'6px auto 16px'}}></div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+            <h2 style={{margin:0,fontFamily:"'Archivo',system-ui",fontWeight:900,fontSize:24,letterSpacing:'-.02em',color:INK}}>{v.dayTitle}</h2>
+            <button onClick={()=>this.setState({dayOpen:false})} style={{width:34,height:34,border:`2px solid ${INK}`,background:'#fff',borderRadius:9,fontSize:18,cursor:'pointer',color:INK}}>✕</button>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>{v.db.map(r=><Card key={r.id} row={r}/>)}</div>
+        </div>
+      </div>
+    );
+  }
+
+  rPay(){
+    const pp=this.state.pp||{};
+    return(
+      <div style={{position:'absolute',inset:0,zIndex:21,display:'flex',alignItems:'center',justifyContent:'center',padding:28}}>
+        <div onClick={()=>this.setState({payOpen:false,pp:null})} style={{position:'absolute',inset:0,background:'rgba(20,20,15,.45)',animation:'fadeIn .2s ease'}}></div>
+        <div style={{position:'relative',width:'100%',background:PAPER,border:`2px solid ${INK}`,borderRadius:20,padding:22,animation:'fadeIn .2s ease'}}>
+          <div style={{fontWeight:700,fontSize:11,fontFamily:"'Space Mono',monospace",textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.5,marginBottom:4}}>Marcar como pago</div>
+          <h3 style={{margin:'0 0 16px',fontFamily:"'Archivo',system-ui",fontWeight:900,fontSize:21,color:INK}}>{pp.name||''}</h3>
+          <label style={LBL}>Quanto você pagou?</label>
+          <input value={pp.value||''} onChange={e=>this.setState({pp:{...pp,value:e.target.value}})} inputMode="decimal" placeholder="0,00" style={{...INP,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:18}}/>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={()=>this.setState({payOpen:false,pp:null})} style={{flex:1,border:`2px solid ${INK}`,background:'#fff',color:INK,borderRadius:12,padding:14,fontWeight:700,fontSize:13,fontFamily:"'Space Mono',monospace",textTransform:'uppercase',cursor:'pointer'}}>Cancelar</button>
+            <button onClick={()=>{if(pp.id)this.sp(pp.id,pp.key,parseAmt(pp.value));this.setState({payOpen:false,pp:null});}} style={{flex:1.4,border:`2px solid ${INK}`,background:GREEN,color:'#fff',borderRadius:12,padding:14,fontWeight:700,fontSize:13,fontFamily:"'Space Mono',monospace",textTransform:'uppercase',cursor:'pointer'}}>Confirmar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>
+if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
+</script>
+</body>
+</html>
