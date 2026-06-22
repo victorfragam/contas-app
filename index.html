@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Contas">
-<meta name="theme-color" content="#F4F1E9">
+<meta name="theme-color" content="#FCFCFA">
 <title>Contas</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;width:100%;overflow:hidden;overscroll-behavior:none}
-body{background:#F4F1E9;font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#14140F}
+body{background:#FCFCFA;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#2C2A25}
 #root{height:100dvh;width:100vw;display:flex;flex-direction:column}
 button{font-family:inherit}
 input,select{font-family:inherit;font-size:16px}
@@ -35,18 +35,15 @@ input,select{font-family:inherit;font-size:16px}
 <script>
 const React = window.React, ReactDOM = window.ReactDOM, h = React.createElement;
 
-const INK = '#14140F', PAPER = '#F4F1E9', CARD = '#FFFFFF';
-const RED = '#E0492F', AMBER = '#E0922F', GREEN = '#1FA85F', BLUE = '#2E8FC9';
-const MONO = "'Space Mono',monospace", ARCH = "'Archivo',sans-serif";
+const BG = '#FCFCFA', TEXT = '#2C2A25', MUTE = '#A8A49A', SUB = '#8A867C';
+const FAINT = '#EEEDE6', LINE = '#E6E4DD', PANEL = '#F4F3EE';
+const SAGE = '#7C9A82', SAGEBG = '#EEF1EC';
+const RED = '#C2604A', AMBER = '#BE8A3C', BLUE = '#6E89B0';
 
 const CATS = {
-  moradia:   {label:'Moradia',   tint:'#F1E9D4', ink:'#8A6A1E'},
-  cartao:    {label:'Cartão',    tint:'#F7E2E0', ink:'#B0413A'},
-  streaming: {label:'Streaming', tint:'#F7EAD7', ink:'#A86A1E'},
-  saude:     {label:'Saúde',     tint:'#DEF1E4', ink:'#2C8350'},
-  cnpj:      {label:'CNPJ',      tint:'#DCECF6', ink:'#2D6E92'},
-  mae:       {label:'Mãe',       tint:'#EAE3F7', ink:'#6A4DA8'},
-  outros:    {label:'Outros',    tint:'#ECECE6', ink:'#55554E'}
+  moradia:{label:'Moradia'}, utilidades:{label:'Utilidades'}, internet:{label:'Internet'},
+  cartao:{label:'Cartão'}, telefone:{label:'Telefone'}, streaming:{label:'Streaming'},
+  saude:{label:'Saúde'}, outros:{label:'Outros'}
 };
 const CATKEYS = Object.keys(CATS);
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -65,13 +62,11 @@ const parseAmt = s => {
 };
 const mIdx = k => { if(!k) return 0; const p = k.split('-').map(Number); return p[0]*12 + (p[1]-1); };
 const kFromI = i => Math.floor(i/12) + '-' + String((i%12)+1).padStart(2,'0');
-
 const seed = () => ({ bills: [], payments: {} });
-
 const load = () => { try { const r = localStorage.getItem(STORE); if (r) return JSON.parse(r); } catch(e){} return null; };
 const persist = s => { try { localStorage.setItem(STORE, JSON.stringify({bills:s.bills, payments:s.payments})); } catch(e){} };
 
-const SI = (sz) => ({fontFamily:MONO, fontWeight:700, fontSize:sz});
+const LB = {fontSize:12, fontWeight:600, letterSpacing:'.07em', textTransform:'uppercase', color:MUTE};
 
 class App extends React.Component {
   constructor(props) {
@@ -100,11 +95,11 @@ class App extends React.Component {
   eff(b,key){ const p=this.state.payments[b.id+':'+key]; if(p&&p.paid&&p.amount!=null) return Number(p.amount); return Number(b.amount)||0; }
   sta(b,key){
     const p=this.state.payments[b.id+':'+key], paid=!!(p&&p.paid), rec=b.type==='receive';
-    if(paid) return {k:'pago',color:GREEN,label:rec?'Recebido':'Pago'};
+    if(paid) return {k:'pago',color:SAGE,label:rec?'Recebido':'Pago'};
     if(key<CUR) return {k:'atrasado',color:RED,label:'Atrasado'};
     if(key===CUR && b.dueDay<TODAY.d) return {k:'atrasado',color:RED,label:'Atrasado'};
     if(key===CUR){ const d=b.dueDay-TODAY.d; if(d<=3) return {k:'breve',color:AMBER,label:d===0?(rec?'Hoje':'Vence hoje'):((rec?'Em ':'Vence ')+(d)+'d')}; }
-    return {k:'avencer',color:INK,label:rec?'A receber':'A vencer'};
+    return {k:'avencer',color:MUTE,label:rec?'A receber':'A vencer'};
   }
   row(b,key){
     const cat=CATS[b.category]||CATS.outros, st=this.sta(b,key);
@@ -144,77 +139,58 @@ class App extends React.Component {
   }
 
   // ---- pieces ----
-  iconBtn(label,onClick){ return h('button',{onClick,style:{width:40,height:40,border:'2px solid '+INK,background:CARD,borderRadius:11,cursor:'pointer',fontSize:18,fontWeight:700,color:INK,display:'flex',alignItems:'center',justifyContent:'center'}},label); }
+  iconBtn(label,onClick){ return h('button',{onClick,style:{width:40,height:40,border:'none',background:PANEL,borderRadius:'50%',cursor:'pointer',fontSize:19,fontWeight:500,color:SUB,display:'flex',alignItems:'center',justifyContent:'center'}},label); }
 
-  card(r,key){
-    return h('div',{key:r.id, onClick:()=>this.edit(r.bill), style:{display:'flex',gap:13,alignItems:'center',border:'2px solid '+INK,borderRadius:14,padding:'13px 14px',cursor:'pointer',background:r.paid?'#FBFAF4':r.cat.tint}},
-      h('button',{onClick:e=>this.toggle(r.bill,key,e), style:{width:32,height:32,flex:'none',border:'2px solid '+(r.paid?GREEN:INK),borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,fontWeight:700,cursor:'pointer',background:r.paid?GREEN:CARD,color:r.paid?'#fff':'transparent'}}, '✓'),
-      h('div',{style:{flex:1,minWidth:0}},
-        h('div',{style:{display:'flex',gap:7,alignItems:'center',marginBottom:3,flexWrap:'wrap'}},
-          h('span',{style:{...SI(10.5),textTransform:'uppercase',letterSpacing:'.04em',color:r.cat.ink}}, r.cat.label),
-          h('span',{style:{...SI(10.5),color:INK,opacity:.32}}, 'dia '+r.dueDay),
-          r.inst && h('span',{style:{...SI(9.5),color:INK,opacity:.5,background:'rgba(20,20,15,.06)',padding:'2px 6px',borderRadius:5}}, r.inst+'×')
-        ),
-        h('div',{style:{fontWeight:700,fontSize:17,letterSpacing:'-.01em',color:INK,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, r.name)
-      ),
-      h('div',{style:{textAlign:'right',flex:'none'}},
-        h('div',{style:{...SI(15),color:INK}}, r.amt),
-        h('div',{style:{...SI(10.5),textTransform:'uppercase',marginTop:2,color:r.st.color}}, r.st.label)
+  bigNum(label,value,sub,pct){
+    return h('div',{style:{marginBottom:30}},
+      h('div',{style:{fontSize:15,fontWeight:500,color:SUB}}, label),
+      h('div',{style:{fontSize:46,fontWeight:500,color:TEXT,letterSpacing:'-.03em',lineHeight:1,marginTop:5}}, value),
+      sub && h('div',{style:{fontSize:15,fontWeight:500,color:MUTE,marginTop:7}}, sub),
+      h('div',{style:{height:4,borderRadius:2,background:LINE,overflow:'hidden',marginTop:20}},
+        h('div',{style:{height:'100%',width:pct+'%',background:SAGE,borderRadius:2,transition:'width .35s ease'}})
       )
     );
   }
 
-  stat(label,val,opts){
-    opts = opts||{};
-    return h('div',{style:{flex:1,border:'2px solid '+INK,borderRadius:13,padding:'11px 12px',background:opts.bg||CARD}},
-      h('div',{style:{...SI(9.5),letterSpacing:'.05em',textTransform:'uppercase',color:opts.fg||INK,opacity:opts.lo||.55}}, label),
-      h('div',{style:{...SI(15.5),color:opts.vc||INK,marginTop:3}}, val)
+  card(r,key){
+    return h('div',{key:r.id, onClick:()=>this.edit(r.bill), style:{display:'flex',alignItems:'center',gap:14,padding:'16px 0',borderBottom:'1px solid '+FAINT,cursor:'pointer'}},
+      h('button',{onClick:e=>this.toggle(r.bill,key,e), style:{width:24,height:24,flex:'none',borderRadius:'50%',border:'1.5px solid '+(r.paid?SAGE:'#D6D3C9'),background:r.paid?SAGE:'transparent',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,cursor:'pointer'}}, r.paid?'✓':''),
+      h('div',{style:{flex:1,minWidth:0}},
+        h('div',{style:{fontSize:17,fontWeight:500,color:r.paid?MUTE:TEXT,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, r.name),
+        h('div',{style:{fontSize:13,fontWeight:500,color:r.st.color,marginTop:2}}, r.st.label + ' · dia ' + r.dueDay + (r.inst ? (' · ' + r.inst) : ''))
+      ),
+      h('div',{style:{fontSize:17,fontWeight:500,color:r.paid?'#C2BEB3':TEXT,textDecoration:r.paid?'line-through':'none',flex:'none'}}, r.amt)
     );
   }
 
   seg(items, val, onPick){
-    return h('div',{style:{display:'flex',border:'2px solid '+INK,borderRadius:12,padding:3,background:CARD}},
-      items.map(it => h('button',{key:it.v, onClick:()=>onPick(it.v), style:{flex:1,textAlign:'center',padding:'9px 0',...SI(12),letterSpacing:'.03em',textTransform:'uppercase',cursor:'pointer',border:'none',borderRadius:8,background:val===it.v?INK:'transparent',color:val===it.v?PAPER:INK,opacity:val===it.v?1:.5}}, it.l))
+    return h('div',{style:{display:'flex',gap:8}},
+      items.map(it => h('button',{key:it.v, onClick:()=>onPick(it.v), style:{padding:'8px 16px',fontSize:13.5,fontWeight:600,cursor:'pointer',border:'none',borderRadius:20,background:val===it.v?SAGEBG:'transparent',color:val===it.v?SAGE:MUTE}}, it.l))
     );
   }
 
   tabMes(key){
     const pi=this.inst(key,'pay').slice().sort((a,b)=>a.dueDay-b.dueDay);
-    let tot=0,ps=0,pc=0;
-    pi.forEach(b=>{ const e=this.eff(b,key); tot+=e; if(this.sta(b,key).k==='pago'){ps+=e;pc++;} });
+    let tot=0,ps=0;
+    pi.forEach(b=>{ const e=this.eff(b,key); tot+=e; if(this.sta(b,key).k==='pago') ps+=e; });
     const pct=tot>0?Math.round(ps/tot*100):0;
     const rows=pi.map(b=>this.row(b,key));
-    const order=['atrasado','breve','avencer','pago'], titles={atrasado:'Atrasadas',breve:'Vence em breve',avencer:'A vencer',pago:'Pagas'}, gc={atrasado:RED,breve:AMBER,avencer:INK,pago:GREEN};
+    const order=['atrasado','breve','avencer','pago'], titles={atrasado:'Atrasadas',breve:'Vence em breve',avencer:'A vencer',pago:'Pagas'}, gc={atrasado:RED,breve:AMBER,avencer:MUTE,pago:SAGE};
     const groups=order.map(k=>{ const it=rows.filter(r=>r.st.k===k); return it.length?{k,title:titles[k],color:gc[k],items:it}:null; }).filter(Boolean);
     return h('div',null,
-      h('div',{style:{display:'flex',gap:8,marginBottom:14}},
-        this.stat('Total', brl(tot), {lo:.5}),
-        this.stat('Pago', brl(ps), {vc:GREEN,lo:.5}),
-        this.stat('Falta', brl(tot-ps), {bg:INK,fg:PAPER,vc:PAPER})
-      ),
-      h('div',{style:{height:13,border:'2px solid '+INK,borderRadius:20,overflow:'hidden',background:CARD,marginBottom:7}},
-        h('div',{style:{height:'100%',background:GREEN,width:pct+'%',transition:'width .35s ease'}})
-      ),
-      h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:16}},
-        h('span',{style:{...SI(11),color:INK,opacity:.55}}, pi.length+' contas · '+pc+' pagas'),
-        h('span',{style:{...SI(11),color:INK}}, pct+'%')
-      ),
-      h('div',{style:{marginBottom:16}}, this.seg([{v:'lista',l:'Lista'},{v:'status',l:'Por status'}], this.state.hl, v=>this.setState({hl:v}))),
+      this.bigNum('Falta pagar', brl(tot-ps), 'de ' + brl(tot), pct),
+      h('div',{style:{marginBottom:6}}, this.seg([{v:'lista',l:'Lista'},{v:'status',l:'Por status'}], this.state.hl, v=>this.setState({hl:v}))),
       rows.length===0
-        ? h('div',{style:{textAlign:'center',padding:'48px 20px',border:'2px dashed rgba(20,20,15,.2)',borderRadius:16}},
-            h('div',{style:{fontFamily:ARCH,fontWeight:800,fontSize:20,color:INK,marginBottom:6}}, 'Nenhuma conta'),
-            h('div',{style:{fontSize:14,color:INK,opacity:.55}}, 'Toque no + para cadastrar sua primeira conta')
+        ? h('div',{style:{textAlign:'center',padding:'56px 20px'}},
+            h('div',{style:{fontSize:19,fontWeight:600,color:TEXT,marginBottom:6}}, 'Nenhuma conta'),
+            h('div',{style:{fontSize:14,color:MUTE}}, 'Toque no + para cadastrar sua primeira conta')
           )
         : this.state.hl==='lista'
-        ? h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, rows.map(r=>this.card(r,key)))
-        : h('div',{style:{display:'flex',flexDirection:'column',gap:18}}, groups.map(g=>
-            h('div',{key:g.k},
-              h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',background:g.color,color:'#fff',padding:'9px 14px',border:'2px solid '+INK,borderRadius:'12px 12px 0 0',...SI(12),letterSpacing:'.04em',textTransform:'uppercase'}},
-                h('span',null,g.title), h('span',{style:{opacity:.8}}, g.items.length)
-              ),
-              h('div',{style:{display:'flex',flexDirection:'column',gap:10,marginTop:10}},
-                g.items.map(r=>h('div',{key:r.id}, this.card(r,key)))
-              )
+        ? h('div',null, rows.map(r=>this.card(r,key)))
+        : h('div',null, groups.map(g=>
+            h('div',{key:g.k,style:{marginBottom:6}},
+              h('div',{style:{...LB,color:g.color,padding:'18px 0 2px'}}, g.title + ' · ' + g.items.length),
+              g.items.map(r=>this.card(r,key))
             )
           ))
     );
@@ -225,99 +201,103 @@ class App extends React.Component {
     const pi=this.inst(key,'pay').slice().sort((a,b)=>a.dueDay-b.dueDay);
     const byDay={}; pi.forEach(b=>{ (byDay[b.dueDay]=byDay[b.dueDay]||[]).push(b); });
     const lead=(new Date(yy,mm-1,1).getDay()+6)%7, dim=new Date(yy,mm,0).getDate();
+    const segEl = h('div',{style:{marginBottom:22}}, this.seg([{v:'mes',l:'Mês'},{v:'agenda',l:'Agenda'}], this.state.cl, v=>this.setState({cl:v})));
     if(this.state.cl==='mes'){
       const cells=[];
       for(let i=0;i<42;i++){
         const dn=i-lead+1;
-        if(dn<1||dn>dim){ cells.push(h('div',{key:i,style:{background:PAPER,aspectRatio:'1'}})); continue; }
+        if(dn<1||dn>dim){ cells.push(h('div',{key:i,style:{aspectRatio:'1'}})); continue; }
         const isT=key===CUR&&dn===TODAY.d, list=byDay[dn]||[];
-        let bg=CARD, fg=INK;
+        let dot=null;
         if(list.length){ const sts=list.map(b=>this.sta(b,key).k);
-          if(sts.indexOf('atrasado')>=0){bg=RED;fg='#fff';}
-          else if(sts.every(s=>s==='pago')){bg=GREEN;fg='#fff';}
-          else if(sts.indexOf('breve')>=0){bg=AMBER;fg='#fff';}
+          let c=SAGE;
+          if(sts.indexOf('atrasado')>=0) c=RED;
+          else if(sts.indexOf('breve')>=0) c=AMBER;
+          else if(sts.every(s=>s==='pago')) c=SAGE;
+          else c='#CFCBC0';
+          dot=h('span',{style:{width:5,height:5,borderRadius:'50%',background:c}});
         }
-        cells.push(h('div',{key:i, onClick:()=>list.length&&this.setState({dayOpen:true,daySel:dn}), style:{aspectRatio:'1',background:bg,display:'flex',flexDirection:'column',justifyContent:'space-between',padding:'5px 6px',cursor:list.length?'pointer':'default'}},
-          h('span',{style:isT?{...SI(13),fontFamily:ARCH,color:'#fff',background:INK,width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}:{...SI(13),color:fg}}, dn),
-          list.length>0 && h('span',{style:{alignSelf:'flex-end',...SI(9),color:fg,opacity:.85}}, list.length)
+        cells.push(h('div',{key:i, onClick:()=>list.length&&this.setState({dayOpen:true,daySel:dn}), style:{aspectRatio:'1',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,cursor:list.length?'pointer':'default'}},
+          h('span',{style: isT ? {width:30,height:30,borderRadius:'50%',background:SAGE,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:600} : {fontSize:14,fontWeight:500,color:list.length?TEXT:'#C2BEB3'}}, dn),
+          dot
         ));
       }
       return h('div',null,
-        h('div',{style:{marginBottom:16}}, this.seg([{v:'mes',l:'Mês'},{v:'agenda',l:'Agenda'}], this.state.cl, v=>this.setState({cl:v}))),
-        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:1.5,border:'2px solid '+INK,borderRadius:13,overflow:'hidden',background:INK}},
-          WDH.map(w=>h('div',{key:w,style:{background:INK,color:PAPER,textAlign:'center',padding:'7px 0',...SI(10),textTransform:'uppercase'}}, w)),
+        segEl,
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}},
+          WDH.map(w=>h('div',{key:w,style:{textAlign:'center',padding:'0 0 8px',...LB,fontSize:11}}, w)),
           cells
         ),
-        h('div',{style:{display:'flex',flexWrap:'wrap',gap:13,marginTop:16}},
-          [[GREEN,'Pago'],[RED,'Atrasado'],[AMBER,'Vence em breve'],[CARD,'A vencer']].map(p=>
-            h('div',{key:p[1],style:{display:'flex',alignItems:'center',gap:6}},
-              h('span',{style:{width:13,height:13,borderRadius:4,background:p[0],border:p[0]===CARD?'2px solid '+INK:'none'}}),
-              h('span',{style:{...SI(11),color:INK,opacity:.7}}, p[1])
+        h('div',{style:{display:'flex',flexWrap:'wrap',gap:14,marginTop:22,paddingTop:18,borderTop:'1px solid '+FAINT}},
+          [[SAGE,'Pago'],[RED,'Atrasado'],[AMBER,'Vence em breve'],['#CFCBC0','A vencer']].map(p=>
+            h('div',{key:p[1],style:{display:'flex',alignItems:'center',gap:7}},
+              h('span',{style:{width:8,height:8,borderRadius:'50%',background:p[0]}}),
+              h('span',{style:{fontSize:13,fontWeight:500,color:SUB}}, p[1])
             ))
         )
       );
     }
     const days=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
     return h('div',null,
-      h('div',{style:{marginBottom:16}}, this.seg([{v:'mes',l:'Mês'},{v:'agenda',l:'Agenda'}], this.state.cl, v=>this.setState({cl:v}))),
-      h('div',{style:{display:'flex',flexDirection:'column',gap:16}}, days.map(d=>{
-        const wd=new Date(yy,mm-1,d).getDay(), isT=key===CUR&&d===TODAY.d;
-        return h('div',{key:d,style:{display:'flex',gap:12}},
-          h('div',{style:{flex:'none',width:58,border:'2px solid '+INK,borderRadius:12,padding:'9px 0',textAlign:'center',background:isT?INK:CARD,color:isT?PAPER:INK}},
-            h('div',{style:{fontFamily:ARCH,fontWeight:900,fontSize:22,lineHeight:1}}, d),
-            h('div',{style:{...SI(9),textTransform:'uppercase',marginTop:2,opacity:.8}}, WD[wd])
-          ),
-          h('div',{style:{flex:1,display:'flex',flexDirection:'column',gap:8}}, byDay[d].map(b=>this.card(this.row(b,key),key)))
-        );
-      }))
+      segEl,
+      days.length===0
+        ? h('div',{style:{textAlign:'center',padding:'56px 20px',fontSize:14,color:MUTE}}, 'Nenhuma conta neste mês')
+        : h('div',{style:{display:'flex',flexDirection:'column',gap:22}}, days.map(d=>{
+            const wd=new Date(yy,mm-1,d).getDay(), isT=key===CUR&&d===TODAY.d;
+            return h('div',{key:d,style:{display:'flex',gap:16}},
+              h('div',{style:{flex:'none',width:46,textAlign:'center',paddingTop:14}},
+                h('div',{style:{fontSize:24,fontWeight:600,color:isT?SAGE:TEXT,lineHeight:1}}, d),
+                h('div',{style:{...LB,fontSize:10,marginTop:4,color:isT?SAGE:MUTE}}, WD[wd])
+              ),
+              h('div',{style:{flex:1,minWidth:0}}, byDay[d].map(b=>this.card(this.row(b,key),key)))
+            );
+          }))
     );
   }
 
   tabReceber(key){
     const ri=this.inst(key,'receive').slice().sort((a,b)=>a.dueDay-b.dueDay);
     let rt=0,rg=0; ri.forEach(b=>{ const e=this.eff(b,key); rt+=e; if(this.sta(b,key).k==='pago') rg+=e; });
+    const pct=rt>0?Math.round(rg/rt*100):0;
     return h('div',null,
-      h('div',{style:{display:'flex',gap:8,marginBottom:18}},
-        this.stat('Total', brl(rt), {lo:.5}),
-        this.stat('Recebido', brl(rg), {bg:BLUE,fg:'#fff',vc:'#fff'}),
-        this.stat('Falta', brl(rt-rg), {bg:INK,fg:PAPER,vc:PAPER})
-      ),
-      h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, ri.map(b=>this.card(this.row(b,key),key)))
+      this.bigNum('A receber', brl(rt-rg), 'de ' + brl(rt), pct),
+      ri.length===0
+        ? h('div',{style:{textAlign:'center',padding:'40px 20px',fontSize:14,color:MUTE}}, 'Nenhuma entrada cadastrada')
+        : h('div',null, ri.map(b=>this.card(this.row(b,key),key)))
     );
   }
 
   navItem(id,label){
     const a=this.state.tab===id;
-    return h('button',{onClick:()=>this.setState({tab:id}), style:{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:5,padding:0}},
-      h('div',{style:{height:3,width:26,borderRadius:3,background:a?GREEN:'transparent'}}),
-      h('span',{style:{...SI(11),letterSpacing:'.03em',textTransform:'uppercase',color:a?INK:'rgba(20,20,15,.4)'}}, label)
-    );
+    return h('button',{onClick:()=>this.setState({tab:id}), style:{background:'none',border:'none',cursor:'pointer',fontSize:14.5,fontWeight:a?600:500,color:a?TEXT:MUTE,borderBottom:'2px solid '+(a?SAGE:'transparent'),paddingBottom:4}}, label);
   }
 
   // ---- overlays ----
   toggleRow(title,sub,on,fn){
-    return h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',border:'2px solid '+INK,borderRadius:12,padding:'12px 14px',background:CARD,marginBottom:10}},
+    return h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 0',borderBottom:'1px solid '+FAINT}},
       h('div',null,
-        h('div',{style:{fontWeight:700,fontSize:15,color:INK}}, title),
-        h('div',{style:{fontWeight:400,fontSize:12,color:INK,opacity:.55}}, sub)
+        h('div',{style:{fontWeight:600,fontSize:15,color:TEXT}}, title),
+        h('div',{style:{fontWeight:400,fontSize:13,color:MUTE,marginTop:1}}, sub)
       ),
-      h('button',{onClick:fn,style:{minWidth:64,padding:'9px 0',...SI(12),cursor:'pointer',border:'2px solid '+INK,borderRadius:9,background:on?INK:CARD,color:on?PAPER:'rgba(20,20,15,.4)'}}, on?'Sim':'Não')
+      h('button',{onClick:fn,style:{width:50,height:30,borderRadius:16,border:'none',background:on?SAGE:'#DBD8CE',position:'relative',cursor:'pointer',transition:'background .2s'}},
+        h('span',{style:{position:'absolute',top:3,left:on?23:3,width:24,height:24,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}})
+      )
     );
   }
 
   sheetEl(){
     const f=this.state.form, editing=this.state.editing;
-    const LBL={display:'block',...SI(11),textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.6,marginBottom:6};
-    const INP={width:'100%',border:'2px solid '+INK,borderRadius:11,padding:'13px 14px',fontWeight:600,fontSize:16,background:CARD,color:INK,outline:'none',display:'block',marginBottom:16};
+    const LBL={display:'block',fontSize:13,fontWeight:600,color:SUB,marginBottom:7};
+    const INP={width:'100%',border:'1px solid '+LINE,borderRadius:12,padding:'13px 14px',fontWeight:500,fontSize:16,background:'#fff',color:TEXT,outline:'none',display:'block',marginBottom:16};
     return h('div',{style:{position:'absolute',inset:0,zIndex:30,display:'flex',flexDirection:'column',justifyContent:'flex-end'}},
-      h('div',{onClick:()=>this.setState({sheet:false}),style:{position:'absolute',inset:0,background:'rgba(20,20,15,.42)',animation:'fadeIn .2s ease'}}),
-      h('div',{className:'scroll',style:{position:'relative',background:PAPER,borderTopLeftRadius:28,borderTopRightRadius:28,border:'2px solid '+INK,borderBottom:'none',maxHeight:'92%',overflowY:'auto',padding:'10px 22px calc(34px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
-        h('div',{style:{width:42,height:5,borderRadius:3,background:INK,opacity:.25,margin:'6px auto 16px'}}),
+      h('div',{onClick:()=>this.setState({sheet:false}),style:{position:'absolute',inset:0,background:'rgba(44,42,37,.32)',animation:'fadeIn .2s ease'}}),
+      h('div',{className:'scroll',style:{position:'relative',background:BG,borderTopLeftRadius:26,borderTopRightRadius:26,maxHeight:'92%',overflowY:'auto',padding:'10px 22px calc(34px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
+        h('div',{style:{width:40,height:5,borderRadius:3,background:LINE,margin:'6px auto 18px'}}),
         h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}},
-          h('h2',{style:{margin:0,fontFamily:ARCH,fontWeight:900,fontSize:26,letterSpacing:'-.02em',color:INK}}, editing?'Editar conta':'Nova conta'),
+          h('h2',{style:{margin:0,fontWeight:600,fontSize:24,letterSpacing:'-.01em',color:TEXT}}, editing?'Editar conta':'Nova conta'),
           this.iconBtn('✕', ()=>this.setState({sheet:false}))
         ),
-        h('div',{style:{marginBottom:18}}, this.seg([{v:'pay',l:'Pagar'},{v:'receive',l:'Receber'}], f.type, v=>this.set({type:v}))),
+        h('div',{style:{marginBottom:20}}, this.seg([{v:'pay',l:'Pagar'},{v:'receive',l:'Receber'}], f.type, v=>this.set({type:v}))),
         h('label',{style:LBL},'Nome'),
         h('input',{value:f.name, onChange:e=>this.set({name:e.target.value}), placeholder:'Ex: Conta de luz', style:INP}),
         h('label',{style:LBL},'Categoria'),
@@ -325,15 +305,16 @@ class App extends React.Component {
         h('div',{style:{display:'flex',gap:12,marginBottom:16}},
           h('div',{style:{flex:1.4}},
             h('label',{style:LBL}, f.installment?'Valor parcela':(f.variable?'Valor estimado':'Valor')),
-            h('input',{value:f.amount, onChange:e=>this.set({amount:e.target.value}), inputMode:'decimal', placeholder:'0,00', style:{...INP,marginBottom:0,...SI(16)}})
+            h('input',{value:f.amount, onChange:e=>this.set({amount:e.target.value}), inputMode:'decimal', placeholder:'0,00', style:{...INP,marginBottom:0}})
           ),
           h('div',{style:{flex:1}},
             h('label',{style:LBL},'Dia'),
             h('input',{value:f.dueDay, onChange:e=>this.set({dueDay:e.target.value}), inputMode:'numeric', placeholder:'1–31', style:{...INP,marginBottom:0}})
           )
         ),
+        h('div',{style:{height:6}}),
         this.toggleRow('Parcelado','Compra em parcelas fixas', f.installment, ()=>this.set({installment:!f.installment})),
-        f.installment && h('div',{style:{display:'flex',gap:12,border:'2px solid '+INK,borderRadius:12,padding:14,background:CARD,marginBottom:10}},
+        f.installment && h('div',{style:{display:'flex',gap:12,marginTop:14}},
           h('div',{style:{flex:1}}, h('label',{style:LBL},'Total parcelas'), h('input',{value:f.installmentTotal, onChange:e=>this.set({installmentTotal:e.target.value}), inputMode:'numeric', placeholder:'12', style:{...INP,marginBottom:0}})),
           h('div',{style:{flex:1}}, h('label',{style:LBL},'Parcela atual'), h('input',{value:f.installmentCurrent, onChange:e=>this.set({installmentCurrent:e.target.value}), inputMode:'numeric', placeholder:'1', style:{...INP,marginBottom:0}}))
         ),
@@ -341,9 +322,9 @@ class App extends React.Component {
           this.toggleRow('Recorrente','Repete todo mês', f.recurring, ()=>this.set({recurring:!f.recurring})),
           this.toggleRow('Valor muda todo mês','Luz, água, condomínio…', f.variable, ()=>this.set({variable:!f.variable}))
         ),
-        h('div',{style:{height:8}}),
-        h('button',{onClick:()=>this.commit(), style:{width:'100%',border:'2px solid '+INK,background:INK,color:PAPER,borderRadius:13,padding:16,fontFamily:ARCH,fontWeight:800,fontSize:16,letterSpacing:'.02em',textTransform:'uppercase',cursor:'pointer'}}, 'Salvar'),
-        editing && h('button',{onClick:()=>this.del(), style:{width:'100%',border:'none',background:'none',color:RED,padding:14,...SI(13),textTransform:'uppercase',letterSpacing:'.05em',cursor:'pointer',marginTop:4}}, 'Excluir conta')
+        h('div',{style:{height:24}}),
+        h('button',{onClick:()=>this.commit(), style:{width:'100%',border:'none',background:SAGE,color:'#fff',borderRadius:14,padding:16,fontWeight:600,fontSize:16,cursor:'pointer'}}, 'Salvar'),
+        editing && h('button',{onClick:()=>this.del(), style:{width:'100%',border:'none',background:'none',color:RED,padding:14,fontWeight:600,fontSize:14,cursor:'pointer',marginTop:6}}, 'Excluir conta')
       )
     );
   }
@@ -352,31 +333,31 @@ class App extends React.Component {
     const [, mm]=key.split('-').map(Number);
     const list=(this.inst(key,'pay').filter(b=>b.dueDay===this.state.daySel)).slice().sort((a,b)=>a.dueDay-b.dueDay);
     return h('div',{style:{position:'absolute',inset:0,zIndex:28,display:'flex',flexDirection:'column',justifyContent:'flex-end'}},
-      h('div',{onClick:()=>this.setState({dayOpen:false}),style:{position:'absolute',inset:0,background:'rgba(20,20,15,.42)',animation:'fadeIn .2s ease'}}),
-      h('div',{className:'scroll',style:{position:'relative',background:PAPER,borderTopLeftRadius:28,borderTopRightRadius:28,border:'2px solid '+INK,borderBottom:'none',maxHeight:'80%',overflowY:'auto',padding:'10px 22px calc(28px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
-        h('div',{style:{width:42,height:5,borderRadius:3,background:INK,opacity:.25,margin:'6px auto 16px'}}),
-        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}},
-          h('h2',{style:{margin:0,fontFamily:ARCH,fontWeight:900,fontSize:24,letterSpacing:'-.02em',color:INK}}, this.state.daySel+' de '+MONTHS[mm-1]),
+      h('div',{onClick:()=>this.setState({dayOpen:false}),style:{position:'absolute',inset:0,background:'rgba(44,42,37,.32)',animation:'fadeIn .2s ease'}}),
+      h('div',{className:'scroll',style:{position:'relative',background:BG,borderTopLeftRadius:26,borderTopRightRadius:26,maxHeight:'80%',overflowY:'auto',padding:'10px 22px calc(28px + env(safe-area-inset-bottom))',animation:'sheetUp .28s cubic-bezier(.2,.8,.2,1)'}},
+        h('div',{style:{width:40,height:5,borderRadius:3,background:LINE,margin:'6px auto 18px'}}),
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+          h('h2',{style:{margin:0,fontWeight:600,fontSize:22,letterSpacing:'-.01em',color:TEXT}}, this.state.daySel+' de '+MONTHS[mm-1]),
           this.iconBtn('✕', ()=>this.setState({dayOpen:false}))
         ),
-        h('div',{style:{display:'flex',flexDirection:'column',gap:10}}, list.map(b=>this.card(this.row(b,key),key)))
+        h('div',null, list.map(b=>this.card(this.row(b,key),key)))
       )
     );
   }
 
   payEl(){
     const pp=this.state.pp; if(!pp) return null;
-    const LBL={display:'block',...SI(11),textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.6,marginBottom:6};
+    const LBL={display:'block',fontSize:13,fontWeight:600,color:SUB,marginBottom:7};
     return h('div',{style:{position:'absolute',inset:0,zIndex:32,display:'flex',alignItems:'center',justifyContent:'center',padding:28}},
-      h('div',{onClick:()=>this.setState({payOpen:false,pp:null}),style:{position:'absolute',inset:0,background:'rgba(20,20,15,.46)',animation:'fadeIn .2s ease'}}),
-      h('div',{style:{position:'relative',width:'100%',maxWidth:360,background:PAPER,border:'2px solid '+INK,borderRadius:20,padding:22,animation:'fadeIn .2s ease'}},
-        h('div',{style:{...SI(11),textTransform:'uppercase',letterSpacing:'.05em',color:INK,opacity:.5,marginBottom:4}}, 'Marcar como pago'),
-        h('h3',{style:{margin:'0 0 16px',fontFamily:ARCH,fontWeight:900,fontSize:21,color:INK}}, pp.name),
+      h('div',{onClick:()=>this.setState({payOpen:false,pp:null}),style:{position:'absolute',inset:0,background:'rgba(44,42,37,.36)',animation:'fadeIn .2s ease'}}),
+      h('div',{style:{position:'relative',width:'100%',maxWidth:360,background:BG,borderRadius:22,padding:24,animation:'fadeIn .2s ease'}},
+        h('div',{style:{...LB,marginBottom:5}}, 'Marcar como pago'),
+        h('h3',{style:{margin:'0 0 18px',fontWeight:600,fontSize:21,color:TEXT}}, pp.name),
         h('label',{style:LBL},'Quanto você pagou?'),
-        h('input',{value:pp.value, onChange:e=>this.setState({pp:{...pp,value:e.target.value}}), inputMode:'decimal', placeholder:'0,00', autoFocus:true, style:{width:'100%',border:'2px solid '+INK,borderRadius:11,padding:'13px 14px',...SI(18),background:CARD,color:INK,outline:'none',marginBottom:16}}),
+        h('input',{value:pp.value, onChange:e=>this.setState({pp:{...pp,value:e.target.value}}), inputMode:'decimal', placeholder:'0,00', autoFocus:true, style:{width:'100%',border:'1px solid '+LINE,borderRadius:12,padding:'14px 14px',fontWeight:600,fontSize:18,background:'#fff',color:TEXT,outline:'none',marginBottom:18}}),
         h('div',{style:{display:'flex',gap:10}},
-          h('button',{onClick:()=>this.setState({payOpen:false,pp:null}), style:{flex:1,border:'2px solid '+INK,background:CARD,color:INK,borderRadius:12,padding:14,...SI(13),textTransform:'uppercase',cursor:'pointer'}}, 'Cancelar'),
-          h('button',{onClick:()=>{ this.pay(pp.id,pp.key,parseAmt(pp.value)); this.setState({payOpen:false,pp:null}); }, style:{flex:1.4,border:'2px solid '+INK,background:GREEN,color:'#fff',borderRadius:12,padding:14,...SI(13),textTransform:'uppercase',cursor:'pointer'}}, 'Confirmar')
+          h('button',{onClick:()=>this.setState({payOpen:false,pp:null}), style:{flex:1,border:'1px solid '+LINE,background:'#fff',color:SUB,borderRadius:13,padding:14,fontWeight:600,fontSize:14,cursor:'pointer'}}, 'Cancelar'),
+          h('button',{onClick:()=>{ this.pay(pp.id,pp.key,parseAmt(pp.value)); this.setState({payOpen:false,pp:null}); }, style:{flex:1.4,border:'none',background:SAGE,color:'#fff',borderRadius:13,padding:14,fontWeight:600,fontSize:14,cursor:'pointer'}}, 'Confirmar')
         )
       )
     );
@@ -390,20 +371,20 @@ class App extends React.Component {
     else if(tab==='cal') body=this.tabCal(key);
     else body=this.tabReceber(key);
 
-    return h('div',{style:{position:'relative',height:'100dvh',width:'100%',maxWidth:520,margin:'0 auto',background:PAPER,display:'flex',flexDirection:'column',overflow:'hidden'}},
-      h('header',{style:{padding:'calc(14px + env(safe-area-inset-top)) 20px 10px',flex:'none',background:PAPER}},
-        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}},
-          h('div',{style:{display:'flex',gap:8}}, this.iconBtn('‹', ()=>this.setState({offset:this.state.offset-1})), this.iconBtn('›', ()=>this.setState({offset:this.state.offset+1}))),
-          key!==CUR && h('button',{onClick:()=>this.setState({offset:0}), style:{padding:'8px 15px',border:'2px solid '+INK,background:INK,color:PAPER,borderRadius:10,...SI(11),letterSpacing:'.06em',textTransform:'uppercase',cursor:'pointer'}}, 'Hoje')
+    return h('div',{style:{position:'relative',height:'100dvh',width:'100%',maxWidth:520,margin:'0 auto',background:BG,display:'flex',flexDirection:'column',overflow:'hidden'}},
+      h('header',{style:{padding:'calc(16px + env(safe-area-inset-top)) 22px 14px',flex:'none',background:BG}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
+          h('div',{style:{display:'flex',gap:10}}, this.iconBtn('‹', ()=>this.setState({offset:this.state.offset-1})), this.iconBtn('›', ()=>this.setState({offset:this.state.offset+1}))),
+          key!==CUR && h('button',{onClick:()=>this.setState({offset:0}), style:{padding:'9px 16px',border:'none',background:SAGEBG,color:SAGE,borderRadius:18,fontSize:13,fontWeight:600,cursor:'pointer'}}, 'Hoje')
         ),
-        h('div',{style:{display:'flex',alignItems:'flex-end',gap:10,lineHeight:.9}},
-          h('h1',{style:{margin:0,fontFamily:ARCH,fontWeight:900,fontSize:42,letterSpacing:'-.03em',color:INK,textTransform:'uppercase'}}, MONTHS[mm-1].toUpperCase()),
-          h('span',{style:{...SI(18),color:INK,opacity:.42,paddingBottom:5}}, yy)
+        h('div',{style:{display:'flex',alignItems:'baseline',gap:9}},
+          h('h1',{style:{margin:0,fontWeight:600,fontSize:25,letterSpacing:'-.01em',color:TEXT}}, MONTHS[mm-1]),
+          h('span',{style:{fontSize:16,fontWeight:500,color:MUTE}}, yy)
         )
       ),
-      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 20px calc(108px + env(safe-area-inset-bottom))'}}, body),
-      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:20,bottom:'calc(98px + env(safe-area-inset-bottom))',width:60,height:60,borderRadius:19,border:'2px solid '+INK,background:GREEN,color:'#fff',fontSize:32,fontWeight:700,cursor:'pointer',zIndex:8,boxShadow:'0 8px 22px -6px rgba(20,20,15,.5)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
-      h('nav',{style:{flex:'none',background:PAPER,borderTop:'2px solid '+INK,display:'flex',alignItems:'center',padding:'9px 8px calc(9px + env(safe-area-inset-bottom))'}},
+      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 22px calc(112px + env(safe-area-inset-bottom))'}}, body),
+      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:22,bottom:'calc(100px + env(safe-area-inset-bottom))',width:58,height:58,borderRadius:'50%',border:'none',background:SAGE,color:'#fff',fontSize:30,fontWeight:400,cursor:'pointer',zIndex:8,boxShadow:'0 10px 26px -8px rgba(124,154,130,.7)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
+      h('nav',{style:{flex:'none',background:BG,borderTop:'1px solid '+FAINT,display:'flex',alignItems:'center',justifyContent:'center',gap:44,padding:'15px 8px calc(15px + env(safe-area-inset-bottom))'}},
         this.navItem('mes','Mês'), this.navItem('cal','Agenda'), this.navItem('receber','Receber')
       ),
       sheet && this.sheetEl(),
