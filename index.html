@@ -289,7 +289,7 @@ class App extends React.Component {
 
   navItem(id,label){
     const a=this.state.tab===id;
-    return h('button',{onClick:()=>this.setState({tab:id}), style:{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:5,paddingTop:10}},
+    return h('button',{onClick:()=>this.setState({tab:id}), style:{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:5,padding:0}},
       h('div',{style:{height:3,width:26,borderRadius:3,background:a?GREEN:'transparent'}}),
       h('span',{style:{...SI(11),letterSpacing:'.03em',textTransform:'uppercase',color:a?INK:'rgba(20,20,15,.4)'}}, label)
     );
@@ -404,7 +404,7 @@ class App extends React.Component {
       ),
       h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 20px calc(108px + env(safe-area-inset-bottom))'}}, body),
       h('button',{onClick:()=>this.add(), style:{position:'absolute',right:20,bottom:'calc(98px + env(safe-area-inset-bottom))',width:60,height:60,borderRadius:19,border:'2px solid '+INK,background:GREEN,color:'#fff',fontSize:32,fontWeight:700,cursor:'pointer',zIndex:8,boxShadow:'0 8px 22px -6px rgba(20,20,15,.5)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
-      h('nav',{style:{flex:'none',background:PAPER,borderTop:'2px solid '+INK,display:'flex',alignItems:'flex-start',padding:'8px 8px calc(10px + env(safe-area-inset-bottom))',height:'calc(60px + env(safe-area-inset-bottom))'}},
+      h('nav',{style:{flex:'none',background:PAPER,borderTop:'2px solid '+INK,display:'flex',alignItems:'center',padding:'9px 8px calc(9px + env(safe-area-inset-bottom))'}},
         this.navItem('mes','Mês'), this.navItem('cal','Agenda'), this.navItem('receber','Receber')
       ),
       sheet && this.sheetEl(),
