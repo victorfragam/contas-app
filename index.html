@@ -37,7 +37,7 @@ const React = window.React, ReactDOM = window.ReactDOM, h = React.createElement;
 
 const BG = '#FCFCFA', TEXT = '#2C2A25', MUTE = '#A8A49A', SUB = '#8A867C';
 const FAINT = '#EEEDE6', LINE = '#E6E4DD', PANEL = '#F4F3EE';
-const SAGE = '#9ec000', SAGEBG = '#F5FCD6';
+const SAGE = '#9EC000', SAGEBG = '#F4F8D8';
 const RED = '#C2604A', AMBER = '#BE8A3C', BLUE = '#6E89B0';
 
 const CATS = {
@@ -278,7 +278,7 @@ class App extends React.Component {
 
   navItem(id,label){
     const a=this.state.tab===id;
-    return h('button',{onClick:()=>this.setState({tab:id}), style:{background:'none',border:'none',cursor:'pointer',fontSize:14.5,fontWeight:a?600:500,color:a?TEXT:MUTE,borderBottom:'2px solid '+(a?SAGE:'transparent'),paddingBottom:4}}, label);
+    return h('button',{onClick:()=>this.setState({tab:id}), style:{background:'none',border:'none',cursor:'pointer',fontSize:14.5,fontWeight:a?600:500,color:a?TEXT:MUTE,borderBottom:'2px solid '+(a?SAGE:'transparent'),paddingBottom:3,lineHeight:1.15}}, label);
   }
 
   // ---- overlays ----
@@ -391,9 +391,9 @@ class App extends React.Component {
           h('span',{style:{fontSize:16,fontWeight:500,color:MUTE}}, yy)
         )
       ),
-      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 22px calc(112px + env(safe-area-inset-bottom))'}}, body),
-      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:22,bottom:'calc(100px + env(safe-area-inset-bottom))',width:58,height:58,borderRadius:'50%',border:'none',background:SAGE,color:'#fff',fontSize:30,fontWeight:400,cursor:'pointer',zIndex:8,boxShadow:'0 10px 26px -8px rgba(182,224,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
-      h('nav',{style:{flex:'none',background:BG,borderTop:'1px solid '+FAINT,display:'flex',alignItems:'center',justifyContent:'center',gap:44,padding:'15px 8px calc(15px + env(safe-area-inset-bottom))'}},
+      h('main',{className:'scroll',style:{flex:1,overflowY:'auto',padding:'14px 22px calc(72px + env(safe-area-inset-bottom))'}}, body),
+      h('button',{onClick:()=>this.add(), style:{position:'absolute',right:22,bottom:'calc(62px + env(safe-area-inset-bottom))',width:58,height:58,borderRadius:'50%',border:'none',background:SAGE,color:'#fff',fontSize:30,fontWeight:400,cursor:'pointer',zIndex:8,boxShadow:'0 10px 26px -8px rgba(158,192,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:3}}, '+'),
+      h('nav',{style:{flex:'none',background:BG,borderTop:'1px solid '+FAINT,display:'flex',alignItems:'center',justifyContent:'center',gap:44,padding:'8px 8px calc(8px + env(safe-area-inset-bottom))'}},
         this.navItem('mes','Mês'), this.navItem('cal','Agenda'), this.navItem('receber','Receber')
       ),
       sheet && this.sheetEl(),
